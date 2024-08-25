@@ -1,0 +1,70 @@
+<html>
+    <head>
+        <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/htmx.org@2.0.2" integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ" crossorigin="anonymous"></script>
+        <script src="https://unpkg.com/htmx-ext-ws@2.0.1/ws.js"></script>
+        <script>
+            document.addEventListener('htmx:wsAfterMessage', function(evt) {
+                // Parse the HTML string
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(evt.detail.message, 'text/html');
+
+                var messageEl = doc.querySelector(".chat-message")
+
+                // Get the encoded message
+                var encodedMessage = messageEl.getAttribute('data-encoded-message');
+                var username = messageEl.getAttribute('data-username');
+                
+                // Decode the message
+                var decodedMessage = decodeMessage(encodedMessage);
+                
+                var actualChat = document.querySelector('.chat-message:last-child');
+                var previousActualChat = document.querySelector('.chat-message:nth-last-child(2)')
+
+                if (previousActualChat && username == previousActualChat.getAttribute("data-username")) {
+                    // merge to above message
+                    actualChat.remove()
+                    previousActualChatBubble = previousActualChat.querySelector(".chat-bubble")
+                    previousActualChatBubble.innerHTML += "<br />"
+                    previousActualChatBubble.innerHTML += decodedMessage
+                } else if (actualChat) {
+                    actualChatBubble = actualChat.querySelector(".chat-bubble")
+                    actualChatBubble.textContent = decodedMessage;
+                }
+                
+                // Get the div element
+                let messageContainer = document.getElementById('chat-messages');
+                // Scroll to the bottom of the div if already at bottom
+                if (messageContainer.scrollHeight - messageContainer.scrollTop < 1000) {
+                    messageContainer.scrollTop = messageContainer.scrollHeight;
+                }
+            });
+
+            function decodeMessage(encodedMessage) {
+                // First, replace any URL-safe base64 characters
+                encodedMessage = encodedMessage.replace(/-/g, '+').replace(/_/g, '/');
+                
+                // Add padding if necessary
+                while (encodedMessage.length % 4) {
+                    encodedMessage += '=';
+                }
+                
+                // Decode the base64 string
+                return decodeURIComponent(atob(encodedMessage));
+            }
+        </script>
+    </head>
+    <body>
+        <div class="h-screen flex flex-col" hx-ext="ws" ws-connect="/chat">
+            <div class="flex-grow p-4 overflow-auto" id="chat-messages">
+                <!-- show messages -->
+            </div>
+            <form class="p-4 w-full join" id="chat-send" ws-send>
+                <!-- send messages -->
+                <input name="chat-message" type="text" placeholder="Send message..." class="input input-bordered w-full join-item" />
+                <button class="btn join-item">Send</button>
+            </form>
+        </div>
+    </body>
+</html>
