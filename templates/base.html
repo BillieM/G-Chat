@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <link href="/static/css/main.css" type="text/css" rel="stylesheet">
+        <script src="/static/js/main.js" type="module"></script>
+        <title> G-Chat </title>
+        {{block "head" .}} {{end}}
+    </head>
+
+    <body class="h-screen flex flex-col overflow-hidden">
+        <header id="nav">{{block "nav" .}} {{end}}</header>
+        <main id="content" class="flex-grow flex flex-col overflow-y-auto">{{block "content" .}} {{end}}</main>
+    </body>
+    
+</html>

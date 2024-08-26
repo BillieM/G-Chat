@@ -1,0 +1,44 @@
+{{define "head"}}
+
+{{end}}
+
+{{define "content"}}
+<div class="flex flex-col">
+    <div>
+        <h2> General </h2>
+    </div>
+
+    <div>
+        <h2> Player Colours </h2>
+    </div>
+
+    <div>
+        <h2 class="text-left"> Available Colours </h2>
+        <div class = "flex flex-">
+            <div class="join bg-base-200">
+                <button class="join-item btn btn-ghost btn-circle">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>                  
+                </button>
+                <div class="divider divider-horizontal">OR</div>
+                <input type="text" placeholder="preset name" class="join-item input" />
+                <div class="join-item dropdown">
+                    <div tabindex="0" role="button" class="btn m-1">BG col</div>
+                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
+                      <li><a>Item 1</a></li>
+                      <li><a>Item 2</a></li>
+                    </ul>
+                </div>
+                <div class="join-item dropdown">
+                    <div tabindex="0" role="button" class="btn m-1">TXT col</div>
+                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
+                      <li><a>Item 1</a></li>
+                      <li><a>Item 2</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -1,20 +1,45 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
-	"fmt"
-	"html/template"
-	"log"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
-
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	g "xabbo.b7c.io/goearth"
-	in "xabbo.b7c.io/goearth/shockwave/in"
+)
+
+/*
+to implement
+
+message sending
+	- don't create 2 instances of a message sent by me
+		- whether sent from web client or habbo itself
+	- ability to choose whisper/ say/ shout
+		- default to shout
+
+shout/ whisper/ say received differentiation
+
+avatars
+	- clicking on avatar allows you to pick
+
+mutexes to ensure concurrency stability
+
+ability to view badges/ mottos in chat client
+
+ability to assign a colour to a user from chat client
+	- opens when clicking avatar
+	- colour picker section
+	- requests all available colours from backend
+		- can then select the one you want
+
+colour scheme creator
+	- separate page, displays all colours
+	- ability to add new, remove existing, or edit existing
+	- ui:
+		- (-) [rose-500] background: [colour slider] text: [colour slider] -> how it looks: [example message]
+		- [Save]
+
+*/
+
+const (
+	webServerPort = 8080
 )
 
 var (
@@ -33,14 +58,26 @@ var (
 		"m":       "♂",
 		"unknown": "",
 	}
+	config Config
 )
 
+type Config struct {
+	AvailableColours map[string]ColourPair `json:"availableColours"`
+	PlayerColours    map[string]ColourPair `json:"playerColours"`
+}
+
+type ColourPair struct {
+	BackgroundColour string `json:"backgroundColour"`
+	TextColour       string `json:"textColour"`
+}
+
 type ChatMessage struct {
-	Username string
-	Gender   string
-	Colour   string
-	Content  string
-	Time     string
+	Username       string
+	Gender         string
+	ChatBackground string
+	ChatText       string
+	Content        string
+	Time           string
 }
 
 type HabboUser struct {
@@ -57,148 +94,5 @@ type HabboUser struct {
 }
 
 func main() {
-	ext.Initialized(onInitialized)
-	ext.Connected(onConnected)
-	ext.Disconnected(onDisconnected)
-	ext.Intercept(in.CHAT, in.CHAT_2, in.CHAT_3).With(handleHabboChat)
-	ext.Intercept(in.OPC_OK).With(handleHabboEnterRoom)
-	ext.Intercept(in.USERS).With(handleHabboUsers)
-	ext.Intercept(in.LOGOUT).With(handleHabboRemoveUser)
-	ext.Run()
-}
-
-func onInitialized(e g.InitArgs) {
-	log.Println("G-Chat initialized")
-}
-
-func onConnected(e g.ConnectArgs) {
-	log.Printf("Game connected (%s)\n", e.Host)
-	go initWebServer()
-}
-
-func onDisconnected() {
-	log.Println("Game disconnected")
-}
-
-func handleHabboEnterRoom(e *g.Intercept) {
-	usersPacketCount = 0
-	clear(users)
-}
-
-func handleHabboRemoveUser(e *g.Intercept) {
-	s := e.Packet.ReadString()
-	index, err := strconv.Atoi(s)
-	if err != nil {
-		return
-	}
-	if user, ok := users[index]; ok {
-		log.Printf("* %s left the room.", user.Name)
-		delete(users, index)
-	}
-}
-
-func handleHabboUsers(e *g.Intercept) {
-	// Observations:
-	// The first USERS packet sent upon entering the room (after OPC_OK)
-	// is the list of users that are already in the room.
-	// The second USERS packet contains a single user, yourself.
-	// The following USERS packets indicate someone entering the room.
-	usersPacketCount++
-	for range e.Packet.ReadInt() {
-		var user HabboUser
-		e.Packet.Read(&user)
-		if user.Type == 1 {
-			if usersPacketCount >= 3 {
-				log.Printf("* %s entered the room\n", user.Name)
-			}
-			users[user.Index] = &user
-		}
-	}
-}
-
-func handleHabboChat(e *g.Intercept) {
-	index := e.Packet.ReadInt() // skip entity index
-	msg := e.Packet.ReadString()
-
-	user, ok := users[index]
-
-	if !ok {
-		log.Println("error finding user, falling back to default")
-		user = &HabboUser{
-			Name:   "unknown",
-			Gender: "unknown",
-		}
-	}
-
-	tmpl := template.Must(template.ParseFiles("templates/msg.html"))
-	var buf bytes.Buffer
-	tmpl.Execute(&buf, ChatMessage{
-		Username: user.Name,
-		Gender:   genders[user.Gender],
-		Content:  base64.StdEncoding.EncodeToString([]byte(msg)), // encode msg
-		Time:     time.Now().Format("15:04"),
-	})
-
-	for _, conn := range activeConnections {
-		err := conn.WriteMessage(1, buf.Bytes())
-		if err != nil {
-			log.Println(fmt.Errorf(
-				"error with msg: %s, %w", msg, err,
-			))
-		}
-	}
-
-	log.Printf("msg successful %s: %s\n", user.Name, msg)
-	// log.Printf("name:%s, custom: %s, figure: %s, gender: %s, pool figure: %s, type: %v, x: %v, y: %v, z: %v, badgecode: %s\n", user.Name, user.Custom, user.Figure, user.Gender, user.PoolFigure, user.Type, user.X, user.Y, user.Z, user.BadgeCode)
-}
-
-// web server code
-func initWebServer() {
-	http.HandleFunc("/", homeFunc)
-	http.HandleFunc("/chat", chatFunc)
-
-	http.ListenAndServe(":8080", nil)
-}
-
-func homeFunc(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-
-	tmpl := template.Must(template.ParseFiles("templates/index.html"))
-	tmpl.Execute(w, nil)
-}
-
-func chatFunc(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Print("upgrade:", err)
-		return
-	}
-
-	connUuid := uuid.NewString()
-	activeConnections[connUuid] = c
-	defer func() {
-		delete(activeConnections, connUuid)
-		c.Close()
-	}()
-
-	for {
-		mt, message, err := c.ReadMessage()
-		if err != nil {
-			if strings.Contains(err.Error(), "close 1001") {
-				break
-			}
-
-			log.Println("read:", err)
-			break
-		}
-		log.Printf("recv: %s", message)
-		err = c.WriteMessage(mt, message)
-		if err != nil {
-			log.Println("write:", err)
-			break
-		}
-	}
+	initExt()
 }
