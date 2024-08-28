@@ -62,8 +62,11 @@ var (
 )
 
 type Config struct {
-	AvailableColours map[string]ColourPair `json:"availableColours"`
-	PlayerColours    map[string]ColourPair `json:"playerColours"`
+	AvailableColours  map[string]ColourPair `json:"availableColours"`
+	PlayerColours     map[string]ColourPair `json:"playerColours"`
+	BackgroundColours []string              `json:"backgroundColours"`
+	TextColours       []string              `json:"textColours"`
+	PlayerUsername    string                `json:"playerUsername"`
 }
 
 type ColourPair struct {

@@ -1,0 +1,10 @@
+<div class="dropdown">
+    <div tabindex="0" role="button" class="btn m-1">BG col</div>
+    <ul tabindex="0" class="dropdown-content flex flex-wrap bg-base-200 rounded-box z-[1] w-96 p-2 shadow">
+        {{ range . }}
+            <li class = "size-6 m-0.5 bg-{{.}} rounded-lg">
+                <a></a>
+            </li>
+        {{ end }}                    
+    </ul>
+</div>

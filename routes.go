@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -33,11 +35,28 @@ func homeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	servePageTemplate(w, "index", nil)
+	servePageTemplate(w, nil, "index")
 }
 
 func settingsFunc(w http.ResponseWriter, r *http.Request) {
-	servePageTemplate(w, "settings", nil)
+
+	var backgroundColourBuffer bytes.Buffer
+	var textColourBuffer bytes.Buffer
+
+	serveComponentTemplate(&backgroundColourBuffer, "colourpicker", config.BackgroundColours)
+	serveComponentTemplate(&textColourBuffer, "colourpicker", config.TextColours)
+
+	servePageTemplate(w, map[string]any{
+		"Config": config,
+		"Message": map[string]any{
+			"Time":     time.Now(),
+			"Gender":   "♀",
+			"Username": config.PlayerUsername,
+			"Content":  "Example message!",
+		},
+		"BackgroundColourPicker": template.HTML(backgroundColourBuffer.String()),
+		"TextColourPicker":       template.HTML(textColourBuffer.String()),
+	}, "settings", "message")
 }
 
 func chatFunc(w http.ResponseWriter, r *http.Request) {

@@ -102,7 +102,7 @@ func handleHabboChat(e *g.Intercept) {
 	colourPair := getUserColours(user.Name)
 
 	var buf bytes.Buffer
-	serveComponentTemplate(&buf, "msg", ChatMessage{
+	serveComponentTemplate(&buf, "message", ChatMessage{
 		Username:       user.Name,
 		Gender:         genders[user.Gender],
 		ChatBackground: colourPair.BackgroundColour,

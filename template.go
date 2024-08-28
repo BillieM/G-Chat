@@ -6,14 +6,21 @@ import (
 	"io"
 )
 
-func servePageTemplate(w io.Writer, templateName string, data any) {
+func servePageTemplate(w io.Writer, data any, pageName string, componentNames ...string) {
+
+	templates := []string{
+		"templates/base.html",
+		"templates/components/navbar.html",
+	}
+
+	for _, componentName := range componentNames {
+		templates = append(templates, fmt.Sprintf("templates/components/%s.html", componentName))
+	}
+
+	templates = append(templates, fmt.Sprintf("templates/pages/%s.html", pageName))
 
 	t := template.Must(
-		template.ParseFiles(
-			"templates/base.html",
-			"templates/components/nav.html",
-			fmt.Sprintf("templates/pages/%s.html", templateName),
-		),
+		template.ParseFiles(templates...),
 	)
 
 	t.Execute(w, data)
