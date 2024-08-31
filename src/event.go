@@ -13,7 +13,7 @@ const (
 	Message      EventType = "message"
 )
 
-type WebSocketMessage struct {
+type WebMessage struct {
 	Chat        string      `json:"chat"`
 	MessageType MessageType `json:"type"`
 }

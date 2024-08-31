@@ -1,7 +1,9 @@
 package gchat
 
 import (
+	"database/sql"
 	"encoding/json"
+	"g-chat/src/data"
 	"os"
 
 	"github.com/gorilla/websocket"
@@ -21,14 +23,15 @@ var (
 	})
 	activeConnections map[string]*websocket.Conn = make(map[string]*websocket.Conn)
 	upgrader                                     = websocket.Upgrader{}
-	users                                        = map[int]*HabboUser{}
+	users                                        = map[int]*ClientPlayer{}
 	usersPacketCount                             = 0
 	genders           map[string]string          = map[string]string{
 		"f":       "♀",
 		"m":       "♂",
 		"unknown": "",
 	}
-	config Config
+	config  Config
+	queries *data.Queries
 )
 
 type Config struct {
@@ -50,4 +53,15 @@ func loadConfig() {
 		panic(err)
 	}
 	json.Unmarshal(data, &config)
+}
+
+func loadDB() error {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		return err
+	}
+
+	queries = data.New(db)
+
+	return nil
 }

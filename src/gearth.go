@@ -20,7 +20,7 @@ const (
 	Whisper MessageType = "whisper"
 )
 
-type ChatMessage struct {
+type ClientMessage struct {
 	Username       string
 	Gender         string
 	ChatBackground string
@@ -31,7 +31,7 @@ type ChatMessage struct {
 	MessageType    MessageType
 }
 
-type HabboUser struct {
+type ClientPlayer struct {
 	Index      int
 	Name       string
 	Figure     string
@@ -65,6 +65,10 @@ func handleWhisperTest(e *g.Intercept) {
 func onInitialized(e g.InitArgs) {
 	log.Println("G-Chat initialized")
 	loadConfig()
+	err := loadDB()
+	if err != nil {
+		log.Panicf("error loading database: %e", err)
+	}
 	go initWebServer()
 }
 
@@ -102,20 +106,23 @@ func handleHabboUsers(e *g.Intercept) {
 	// is the list of users that are already in the room.
 	// The second USERS packet contains a single user, yourself.
 	// The following USERS packets indicate someone entering the room.
+	var newPlayers []ClientPlayer
 	usersPacketCount++
 	for range e.Packet.ReadInt() {
-		var user HabboUser
-		e.Packet.Read(&user)
-		if user.Type == 1 {
+		var player ClientPlayer
+		e.Packet.Read(&player)
+		if player.Type == 1 {
 			if usersPacketCount >= 3 {
 				go sendEvent(Notification, map[string]string{
-					"Content": fmt.Sprintf("%s entered the room!", user.Name),
+					"Content": fmt.Sprintf("%s entered the room!", player.Name),
 				})
-				log.Printf("* %s entered the room\n", user.Name)
+				log.Printf("* %s entered the room\n", player.Name)
 			}
-			users[user.Index] = &user
+			users[player.Index] = &player
+			newPlayers = append(newPlayers, player)
 		}
 	}
+	go playersApiUpdate(newPlayers)
 }
 
 func handleReceiveHabboSay(e *g.Intercept) {
@@ -138,7 +145,7 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 
 	if !ok {
 		log.Println("error finding user, falling back to default")
-		user = &HabboUser{
+		user = &ClientPlayer{
 			Name:   "unknown",
 			Gender: "unknown",
 		}
@@ -148,7 +155,7 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 
 	fmt.Println(user.Figure)
 
-	go sendEvent(Message, ChatMessage{
+	go sendEvent(Message, ClientMessage{
 		Username:       user.Name,
 		Gender:         genders[user.Gender],
 		ChatBackground: colourPair.BackgroundColour,
@@ -159,7 +166,7 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 	})
 }
 
-func handleSendHabboChat(data WebSocketMessage) {
+func handleSendHabboChat(data WebMessage) {
 	switch data.MessageType {
 	case Say:
 		ext.Send(out.CHAT, data.Chat)

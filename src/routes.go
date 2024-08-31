@@ -92,7 +92,7 @@ func chatFunc(w http.ResponseWriter, r *http.Request) {
 			log.Println("write:", err)
 			break
 		}
-		var wsMessage WebSocketMessage
+		var wsMessage WebMessage
 		json.Unmarshal(message, &wsMessage)
 		handleSendHabboChat(wsMessage)
 	}
