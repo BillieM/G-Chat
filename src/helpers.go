@@ -1,4 +1,4 @@
-package main
+package gchat
 
 func getUserColours(username string) ColourPair {
 	userColour, ok := config.PlayerColours[username]

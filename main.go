@@ -1,9 +1,6 @@
 package main
 
-import (
-	"github.com/gorilla/websocket"
-	g "xabbo.b7c.io/goearth"
-)
+import gchat "g-chat/src"
 
 /*
 to implement
@@ -38,64 +35,6 @@ colour scheme creator
 
 */
 
-const (
-	webServerPort = 8080
-)
-
-var (
-	ext = g.NewExt(g.ExtInfo{
-		Title:       "G-Chat",
-		Description: "A web based habbo chat client",
-		Author:      "Billie Merz",
-		Version:     "1.0",
-	})
-	activeConnections map[string]*websocket.Conn = make(map[string]*websocket.Conn)
-	upgrader                                     = websocket.Upgrader{}
-	users                                        = map[int]*HabboUser{}
-	usersPacketCount                             = 0
-	genders           map[string]string          = map[string]string{
-		"f":       "♀",
-		"m":       "♂",
-		"unknown": "",
-	}
-	config Config
-)
-
-type Config struct {
-	AvailableColours  map[string]ColourPair `json:"availableColours"`
-	PlayerColours     map[string]ColourPair `json:"playerColours"`
-	BackgroundColours []string              `json:"backgroundColours"`
-	TextColours       []string              `json:"textColours"`
-	PlayerUsername    string                `json:"playerUsername"`
-}
-
-type ColourPair struct {
-	BackgroundColour string `json:"backgroundColour"`
-	TextColour       string `json:"textColour"`
-}
-
-type ChatMessage struct {
-	Username       string
-	Gender         string
-	ChatBackground string
-	ChatText       string
-	Content        string
-	Time           string
-}
-
-type HabboUser struct {
-	Index      int
-	Name       string
-	Figure     string
-	Gender     string
-	Custom     string
-	X, Y       int
-	Z          float64
-	PoolFigure string
-	BadgeCode  string
-	Type       int
-}
-
 func main() {
-	initExt()
+	gchat.InitExt()
 }

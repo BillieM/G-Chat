@@ -1,4 +1,4 @@
-package main
+package gchat
 
 import (
 	"bytes"
@@ -108,19 +108,5 @@ func staticFunc(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(data)
 	if err != nil {
 		fmt.Print(err)
-	}
-}
-
-func sendNotificationEvent(data any) {
-	var buf bytes.Buffer
-	serveComponentTemplate(&buf, "notification", data)
-
-	for _, conn := range activeConnections {
-		err := conn.WriteMessage(1, buf.Bytes())
-		if err != nil {
-			log.Println(fmt.Errorf(
-				"error with notification: %w", err,
-			))
-		}
 	}
 }

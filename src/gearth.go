@@ -1,12 +1,9 @@
-package main
+package gchat
 
 import (
-	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"time"
 
@@ -14,7 +11,29 @@ import (
 	"xabbo.b7c.io/goearth/shockwave/in"
 )
 
-func initExt() {
+type ChatMessage struct {
+	Username       string
+	Gender         string
+	ChatBackground string
+	ChatText       string
+	Content        string
+	Time           string
+}
+
+type HabboUser struct {
+	Index      int
+	Name       string
+	Figure     string
+	Gender     string
+	Custom     string
+	X, Y       int
+	Z          float64
+	PoolFigure string
+	BadgeCode  string
+	Type       int
+}
+
+func InitExt() {
 	ext.Initialized(onInitialized)
 	ext.Connected(onConnected)
 	ext.Disconnected(onDisconnected)
@@ -27,11 +46,7 @@ func initExt() {
 
 func onInitialized(e g.InitArgs) {
 	log.Println("G-Chat initialized")
-	data, err := os.ReadFile("config.json")
-	if err != nil {
-		panic(err)
-	}
-	json.Unmarshal(data, &config)
+	loadConfig()
 	go initWebServer()
 }
 
@@ -55,7 +70,7 @@ func handleHabboRemoveUser(e *g.Intercept) {
 		return
 	}
 	if user, ok := users[index]; ok {
-		go sendNotificationEvent(map[string]string{
+		go sendEvent(Notification, map[string]string{
 			"Content": fmt.Sprintf("%s left the room!", user.Name),
 		})
 		log.Printf("* %s left the room.", user.Name)
@@ -75,7 +90,7 @@ func handleHabboUsers(e *g.Intercept) {
 		e.Packet.Read(&user)
 		if user.Type == 1 {
 			if usersPacketCount >= 3 {
-				go sendNotificationEvent(map[string]string{
+				go sendEvent(Notification, map[string]string{
 					"Content": fmt.Sprintf("%s entered the room!", user.Name),
 				})
 				log.Printf("* %s entered the room\n", user.Name)
@@ -101,8 +116,7 @@ func handleHabboChat(e *g.Intercept) {
 
 	colourPair := getUserColours(user.Name)
 
-	var buf bytes.Buffer
-	serveComponentTemplate(&buf, "message", ChatMessage{
+	go sendEvent(Message, ChatMessage{
 		Username:       user.Name,
 		Gender:         genders[user.Gender],
 		ChatBackground: colourPair.BackgroundColour,
@@ -110,15 +124,4 @@ func handleHabboChat(e *g.Intercept) {
 		Content:        base64.StdEncoding.EncodeToString([]byte(msg)), // encode msg
 		Time:           time.Now().Format("15:04"),
 	})
-
-	for _, conn := range activeConnections {
-		err := conn.WriteMessage(1, buf.Bytes())
-		if err != nil {
-			log.Println(fmt.Errorf(
-				"error with msg: %s, %w", msg, err,
-			))
-		}
-	}
-
-	log.Printf("msg successful %s: %s\n", user.Name, msg)
 }
