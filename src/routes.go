@@ -2,6 +2,7 @@ package gchat
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -91,6 +92,9 @@ func chatFunc(w http.ResponseWriter, r *http.Request) {
 			log.Println("write:", err)
 			break
 		}
+		var wsMessage WebSocketMessage
+		json.Unmarshal(message, &wsMessage)
+		handleSendHabboChat(wsMessage)
 	}
 }
 

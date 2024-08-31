@@ -1,5 +1,8 @@
 import 'htmx.org/dist/ext/ws.js';
 
+var messageForm = document.getElementById("message-form")
+
+// handles decoding message/ notification events & performing formatting 
 document.addEventListener('htmx:wsAfterMessage', function(evt) {
 
     // Parse the HTML string
@@ -21,7 +24,10 @@ document.addEventListener('htmx:wsAfterMessage', function(evt) {
         var actualChat = document.querySelector('.chat:last-child');
         var previousActualChat = document.querySelector('.chat:nth-last-child(2)')
     
-        if (previousActualChat && username == previousActualChat.getAttribute("data-username")) {
+        if (previousActualChat && 
+            username == previousActualChat.getAttribute("data-username")
+            
+        ) {
             // merge to above message
             actualChat.remove()
             previousActualChatBubble = previousActualChat.querySelector(".chat-bubble")
@@ -39,7 +45,20 @@ document.addEventListener('htmx:wsAfterMessage', function(evt) {
     if (eventContainer.scrollHeight - eventContainer.scrollTop < 1000) {
         eventContainer.scrollTop = eventContainer.scrollHeight;
     }
-});
+});   
+
+document.addEventListener("htmx:wsBeforeSend", function(evt) {
+    var messageText = messageForm.querySelector("#message-text")
+    if (messageText.value.length == 0) {
+        evt.preventDefault()
+    }
+})
+
+document.addEventListener('htmx:wsAfterSend', function(evt) {
+    var messageText = messageForm.querySelector("#message-text")
+    messageText.value = ""
+})
+
 
 function decodeMessage(encodedMessage) {
     // First, replace any URL-safe base64 characters

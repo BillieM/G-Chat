@@ -13,11 +13,14 @@ const (
 	Message      EventType = "message"
 )
 
+type WebSocketMessage struct {
+	Chat        string      `json:"chat"`
+	MessageType MessageType `json:"type"`
+}
+
 func sendEvent(eventType EventType, data any) {
 	var buf bytes.Buffer
 	serveComponentTemplate(&buf, string(eventType), data)
-
-	log.Println(buf.String())
 
 	for _, conn := range activeConnections {
 		err := conn.WriteMessage(1, buf.Bytes())

@@ -9,6 +9,15 @@ import (
 
 	g "xabbo.b7c.io/goearth"
 	"xabbo.b7c.io/goearth/shockwave/in"
+	"xabbo.b7c.io/goearth/shockwave/out"
+)
+
+type MessageType string
+
+const (
+	Shout   MessageType = "shout"
+	Say     MessageType = "say"
+	Whisper MessageType = "whisper"
 )
 
 type ChatMessage struct {
@@ -17,7 +26,9 @@ type ChatMessage struct {
 	ChatBackground string
 	ChatText       string
 	Content        string
+	EncodedContent string
 	Time           string
+	MessageType    MessageType
 }
 
 type HabboUser struct {
@@ -37,11 +48,18 @@ func InitExt() {
 	ext.Initialized(onInitialized)
 	ext.Connected(onConnected)
 	ext.Disconnected(onDisconnected)
-	ext.Intercept(in.CHAT, in.CHAT_2, in.CHAT_3).With(handleHabboChat)
+	ext.Intercept(in.CHAT).With(handleReceiveHabboSay)
+	ext.Intercept(in.CHAT_2).With(handleReceiveHabboWhisper)
+	ext.Intercept(in.CHAT_3).With(handleReceiveHabboShout)
 	ext.Intercept(in.OPC_OK).With(handleHabboEnterRoom)
 	ext.Intercept(in.USERS).With(handleHabboUsers)
 	ext.Intercept(in.LOGOUT).With(handleHabboRemoveUser)
+	ext.Intercept(out.WHISPER).With(handleWhisperTest)
 	ext.Run()
+}
+
+func handleWhisperTest(e *g.Intercept) {
+	fmt.Printf("intercept: %#v, packet: %#v, packet data: %s\n", e, e.Packet, string(e.Packet.Data))
 }
 
 func onInitialized(e g.InitArgs) {
@@ -100,7 +118,19 @@ func handleHabboUsers(e *g.Intercept) {
 	}
 }
 
-func handleHabboChat(e *g.Intercept) {
+func handleReceiveHabboSay(e *g.Intercept) {
+	handleReceiveHabboChat(e, Say)
+}
+
+func handleReceiveHabboWhisper(e *g.Intercept) {
+	handleReceiveHabboChat(e, Whisper)
+}
+
+func handleReceiveHabboShout(e *g.Intercept) {
+	handleReceiveHabboChat(e, Shout)
+}
+
+func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 	index := e.Packet.ReadInt() // skip entity index
 	msg := e.Packet.ReadString()
 
@@ -116,12 +146,28 @@ func handleHabboChat(e *g.Intercept) {
 
 	colourPair := getUserColours(user.Name)
 
+	fmt.Println(user.Figure)
+
 	go sendEvent(Message, ChatMessage{
 		Username:       user.Name,
 		Gender:         genders[user.Gender],
 		ChatBackground: colourPair.BackgroundColour,
 		ChatText:       colourPair.TextColour,
-		Content:        base64.StdEncoding.EncodeToString([]byte(msg)), // encode msg
+		EncodedContent: base64.StdEncoding.EncodeToString([]byte(msg)), // encode msg
 		Time:           time.Now().Format("15:04"),
+		MessageType:    messageType,
 	})
+}
+
+func handleSendHabboChat(data WebSocketMessage) {
+	switch data.MessageType {
+	case Say:
+		ext.Send(out.CHAT, data.Chat)
+	case Whisper:
+		ext.Send(out.WHISPER, data.Chat)
+	case Shout:
+		ext.Send(out.SHOUT, data.Chat)
+	default:
+		log.Println("invalid message type???")
+	}
 }
