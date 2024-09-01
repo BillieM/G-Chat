@@ -3,3 +3,4 @@ node_modules/
 .vscode/
 static/
 .DS_Store
+db/app.db

@@ -45,24 +45,19 @@ type ClientPlayer struct {
 }
 
 func InitExt() {
-	ext.Initialized(onInitialized)
-	ext.Connected(onConnected)
-	ext.Disconnected(onDisconnected)
+	ext.Initialized(handleInitialized)
+	ext.Connected(handleConnected)
+	ext.Disconnected(handleDisconnected)
 	ext.Intercept(in.CHAT).With(handleReceiveHabboSay)
 	ext.Intercept(in.CHAT_2).With(handleReceiveHabboWhisper)
 	ext.Intercept(in.CHAT_3).With(handleReceiveHabboShout)
 	ext.Intercept(in.OPC_OK).With(handleHabboEnterRoom)
 	ext.Intercept(in.USERS).With(handleHabboUsers)
 	ext.Intercept(in.LOGOUT).With(handleHabboRemoveUser)
-	ext.Intercept(out.WHISPER).With(handleWhisperTest)
 	ext.Run()
 }
 
-func handleWhisperTest(e *g.Intercept) {
-	fmt.Printf("intercept: %#v, packet: %#v, packet data: %s\n", e, e.Packet, string(e.Packet.Data))
-}
-
-func onInitialized(e g.InitArgs) {
+func handleInitialized(e g.InitArgs) {
 	log.Println("G-Chat initialized")
 	loadConfig()
 	err := loadDB()
@@ -72,11 +67,12 @@ func onInitialized(e g.InitArgs) {
 	go initWebServer()
 }
 
-func onConnected(e g.ConnectArgs) {
+func handleConnected(e g.ConnectArgs) {
 	log.Printf("Game connected (%s)\n", e.Host)
+	ext.Send(out.G_USRS)
 }
 
-func onDisconnected() {
+func handleDisconnected() {
 	log.Println("Game disconnected")
 }
 
