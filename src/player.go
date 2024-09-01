@@ -14,14 +14,20 @@ import (
 	"time"
 
 	"go.uber.org/ratelimit"
+	"xabbo.b7c.io/nx"
+	"xabbo.b7c.io/nx/cmd/nx/util"
+	gd "xabbo.b7c.io/nx/gamedata"
+	"xabbo.b7c.io/nx/gamedata/origins"
+	"xabbo.b7c.io/nx/imager"
 )
 
 const (
-	figureSize                         string        = "l"
-	userDataEndpoint                   string        = "https://origins.habbo.com/api/public/users?name=%s"
-	figureEndpoint                     string        = "https://www.habbo.com/habbo-imaging/avatarimage?size=%s&figure=%s"
-	minimumTimeBetweenUserDataRequests time.Duration = time.Hour * 12
-	minimumTimeBetweenFigureRequests   time.Duration = time.Hour * 12
+	figureSize                            string        = "l"
+	userDataEndpoint                      string        = "https://origins.habbo.com/api/public/users?name=%s"
+	figureEndpoint                        string        = "https://www.habbo.com/habbo-imaging/avatarimage?size=%s&figure=%s"
+	minimumTimeBetweenUserDataRequests    time.Duration = time.Hour * 12
+	minimumTimeBetweenPlayerImageRequests time.Duration = time.Hour * 12
+	figureDataCacheTime                   time.Duration = time.Hour * 4
 )
 
 type APIPlayer struct {
@@ -48,14 +54,18 @@ type APIBadge struct {
 	Description string `json:"description"` // "For 12 months of Habbo Club membership"
 }
 
+type PlayerImageType string
+
+const (
+	Figure PlayerImageType = "figure"
+	Avatar PlayerImageType = "avatar"
+)
+
 func (a APIPlayer) toUpdatePlayerUserDataParams(playerID int64) (data.UpdatePlayerUserDataParams, error) {
 	updatePlayerUserDataParams := data.UpdatePlayerUserDataParams{
 		Playerid: playerID,
 	}
 
-	if a.FigureString != "" {
-		updatePlayerUserDataParams.Figurestring = sql.NullString{String: a.FigureString, Valid: true}
-	}
 	if a.Motto != "" {
 		updatePlayerUserDataParams.Motto = sql.NullString{String: a.Motto, Valid: true}
 	}
@@ -112,32 +122,71 @@ func playerApiUpdate(player ClientPlayer) {
 		log.Printf("updated user data for: %s successfully\n", player.Name)
 	}
 
-	if time.Since(dbPlayer.Figurelastrequested.Time) > minimumTimeBetweenFigureRequests {
-		err = requestFigure(dbPlayer)
+	if time.Since(dbPlayer.Figurelastrequested.Time) > minimumTimeBetweenPlayerImageRequests ||
+		time.Since(dbPlayer.AvatarLastRequested.Time) > minimumTimeBetweenPlayerImageRequests {
+
+		figure, err := convertToFigure(player)
 		if err != nil {
-			log.Printf("error requesting user data for %s: %v\n", player.Name, err)
+			log.Println(err)
 			return
 		}
 
-		log.Printf("requested figure for: %s successfully\n", player.Name)
+		log.Printf("converted figure for: %s successfully\n", player.Name)
 
-		dbPlayer, err = queries.UpdatePlayerFigure(context.Background(), dbPlayer.Playerid)
-
+		dbPlayer, err = queries.UpdatePlayerFigureString(context.Background(), data.UpdatePlayerFigureStringParams{
+			Figurestring: sql.NullString{String: figure.String(), Valid: true},
+			Playerid:     dbPlayer.Playerid,
+		})
 		if err != nil {
-			log.Printf("error updating playerFigure in db for: %s: %v\n", player.Name, err)
+			log.Printf("error updating player figure string in db for: %s: %v\n", player.Name, err)
 			return
 		}
 
-		log.Printf("updated figure for: %s successfully\n", player.Name)
+		// generate player avatar
+		if time.Since(dbPlayer.AvatarLastRequested.Time) > minimumTimeBetweenPlayerImageRequests {
+			go func() {
+				err = generatePlayerImage(dbPlayer, figure, Avatar)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				dbPlayer, err = queries.UpdatePlayerAvatar(context.Background(), dbPlayer.Playerid)
+				if err != nil {
+					log.Printf("error updating player avatar in db for: %s: %v\n", player.Name, err)
+					return
+				}
+
+				log.Printf("updated avatar for: %s successfully\n", player.Name)
+			}()
+		}
+
+		// get player figure
+		if time.Since(dbPlayer.Figurelastrequested.Time) > minimumTimeBetweenPlayerImageRequests {
+			go func() {
+				err = generatePlayerImage(dbPlayer, figure, Figure)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				dbPlayer, err = queries.UpdatePlayerFigure(context.Background(), dbPlayer.Playerid)
+				if err != nil {
+					log.Printf("error updating player figure in db for: %s: %v\n", player.Name, err)
+					return
+				}
+
+				log.Printf("updated figure for: %s successfully\n", player.Name)
+			}()
+		}
 	}
 }
 
 func playersApiUpdate(players []ClientPlayer) {
 	rl := ratelimit.New(5) // per second
-
 	for _, playerName := range players {
 		rl.Take()
-		go playerApiUpdate(playerName)
+		playerApiUpdate(playerName)
 	}
 }
 
@@ -159,31 +208,145 @@ func requestUserData(playerName string) (APIPlayer, error) {
 	return apiPlayer, nil
 }
 
-func requestFigure(player data.Player) error {
+/*
+generateFigureString turns a numerical origins figure string into a figure string compatible
+with the habbo figures api
 
-	if !player.Figurestring.Valid {
-		return errors.New("invalid figure string")
+based on: https://github.com/xabbo/nx/blob/dev/cmd/nx/cmd/figure/convert/convert.go
+*/
+func convertToFigure(player ClientPlayer) (nx.Figure, error) {
+	originsFigure := player.Figure
+	if len(originsFigure) != 25 {
+		return nx.Figure{}, errors.New("invalid figure string, must be 25 characters in length")
 	}
 
-	requestUrl := fmt.Sprintf(figureEndpoint, figureSize, player.Figurestring.String)
+	for _, c := range originsFigure {
+		if c < '0' || c > '9' {
+			return nx.Figure{}, errors.New("invalid figure string, must consist only of numbers")
+		}
+	}
 
-	resp, err := http.Get(requestUrl)
+	gdm := gd.NewManager("www.habbo.com")
+
+	err := gdm.Load(gd.GameDataFigure)
+	if err != nil {
+		return nx.Figure{}, fmt.Errorf("failed to load modern figure data: %w", err)
+	}
+
+	ofd, err := loadOriginsFigureData()
+	if err != nil {
+		return nx.Figure{}, fmt.Errorf("failed to load origins figure data: %w", err)
+	}
+
+	colorMap := origins.MakeColorMap(gdm.Figure())
+	converter := origins.NewFigureConverter(ofd, colorMap)
+
+	figure, err := converter.Convert(originsFigure)
+	if err != nil {
+		return nx.Figure{}, err
+	}
+
+	return figure, nil
+}
+
+func loadOriginsFigureData() (*origins.FigureData, error) {
+	if time.Since(figureDataLastObtained) < figureDataCacheTime {
+		return figureData, nil
+	}
+
+	res, err := http.Get("http://origins-gamedata.habbo.com/figuredata/1")
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return nil, errors.New(res.Status)
+	}
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	figureData, err = origins.ParseFigureData(b)
+	if err != nil {
+		return nil, err
+	}
+	figureDataLastObtained = time.Now()
+	return figureData, nil
+}
+
+func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType PlayerImageType) error {
+
+	var headOnly bool
+
+	if playerImageType == Avatar {
+		headOnly = true
+	}
+
+	filePath := fmt.Sprintf("static/%ss/%s.png", playerImageType, player.Username)
+
+	mgr := gd.NewManager(host)
+	renderer := imager.NewAvatarImager(mgr)
+
+	err := util.LoadGameData(mgr, "Loading game data...",
+		gd.GameDataFigure, gd.GameDataFigureMap,
+		gd.GameDataVariables, gd.GameDataAvatar)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
+	var parts []imager.AvatarPart
+	// renderer.Parts is prone to panicking.. hack to get around it
+	func() {
+		defer func() {
+			if excp := recover(); excp != nil {
+				err = fmt.Errorf(
+					"caught exception in render parts for player: %s, recovering: %+v\n", player.Username, excp,
+				)
+			}
+		}()
+		parts, err = renderer.Parts(figure)
+	}()
+
 	if err != nil {
 		return err
 	}
 
-	filePath := fmt.Sprintf("static/figures/%s.png", player.Username)
+	libraries := map[string]struct{}{}
 
-	err = os.WriteFile(filePath, data, 0666)
+	for _, part := range parts {
+		libraries[part.LibraryName] = struct{}{}
+	}
+
+	for lib := range libraries {
+		err = mgr.LoadFigureParts(lib)
+		if err != nil {
+			return err
+		}
+	}
+
+	avatar := imager.Avatar{
+		Figure:        figure,
+		Direction:     4,
+		HeadDirection: 4,
+		Actions:       []nx.AvatarState{nx.AvatarState(nx.ActStand)},
+		Expression:    nx.AvatarState(nx.ActStand),
+		HeadOnly:      headOnly,
+	}
+
+	anim, err := renderer.Compose(avatar)
 	if err != nil {
 		return err
 	}
 
+	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	encoder := imager.NewEncoderPNG()
+	encoder.EncodeFrame(f, anim, 0, 0)
+
+	log.Printf("output: %s\n", filePath)
 	return nil
 }

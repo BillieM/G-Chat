@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"g-chat/src/data"
 	"os"
+	"time"
 
 	"github.com/gorilla/websocket"
 	g "xabbo.b7c.io/goearth"
+	"xabbo.b7c.io/nx/gamedata/origins"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -32,8 +34,11 @@ var (
 		"m":       "♂",
 		"unknown": "",
 	}
-	config  Config
-	queries *data.Queries
+	config                 Config
+	queries                *data.Queries
+	host                   string = "origins.habbo.com"
+	figureData             *origins.FigureData
+	figureDataLastObtained time.Time
 )
 
 type Config struct {

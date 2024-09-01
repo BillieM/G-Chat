@@ -149,8 +149,6 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 
 	colourPair := getUserColours(user.Name)
 
-	fmt.Println(user.Figure)
-
 	go sendEvent(Message, ClientMessage{
 		Username:       user.Name,
 		Gender:         genders[user.Gender],

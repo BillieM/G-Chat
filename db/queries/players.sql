@@ -20,17 +20,30 @@ RETURNING *;
 
 -- name: UpdatePlayerUserData :one
 UPDATE Players
-SET FigureString = ?,
-    Motto = ?,
+SET Motto = ?,
     Membersince = ?,
     UserDataExists = 1,
     UserDataLastRequested = DATETIME('now')
 WHERE PlayerID = ?
 RETURNING *;
 
+-- name: UpdatePlayerFigureString :one
+UPDATE Players
+SET FigureString = ?
+WHERE PlayerID = ?
+RETURNING *;
+
+
 -- name: UpdatePlayerFigure :one
 UPDATE Players
 SET FigureExists = 1,
     FigureLastRequested = DATETIME('now') 
+WHERE PlayerID = ?
+RETURNING *;
+
+-- name: UpdatePlayerAvatar :one
+UPDATE Players
+SET AvatarExists = 1,
+    AvatarLastRequested = DATETIME('now') 
 WHERE PlayerID = ?
 RETURNING *;

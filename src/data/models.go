@@ -18,4 +18,6 @@ type Player struct {
 	Figureexists          sql.NullBool
 	Userdatalastrequested sql.NullTime
 	Figurelastrequested   sql.NullTime
+	AvatarExists          sql.NullBool
+	AvatarLastRequested   sql.NullTime
 }

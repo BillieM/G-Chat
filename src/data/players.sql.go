@@ -16,7 +16,7 @@ INSERT INTO Players (
 ) VALUES (
   ?
 )
-RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested
+RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested, AvatarExists, AvatarLastRequested
 `
 
 func (q *Queries) CreatePlayer(ctx context.Context, username string) (Player, error) {
@@ -32,12 +32,14 @@ func (q *Queries) CreatePlayer(ctx context.Context, username string) (Player, er
 		&i.Figureexists,
 		&i.Userdatalastrequested,
 		&i.Figurelastrequested,
+		&i.AvatarExists,
+		&i.AvatarLastRequested,
 	)
 	return i, err
 }
 
 const getPlayer = `-- name: GetPlayer :one
-SELECT playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested FROM Players
+SELECT playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested, AvatarExists, AvatarLastRequested FROM Players
 WHERE PlayerID = ?
 `
 
@@ -54,12 +56,14 @@ func (q *Queries) GetPlayer(ctx context.Context, playerid int64) (Player, error)
 		&i.Figureexists,
 		&i.Userdatalastrequested,
 		&i.Figurelastrequested,
+		&i.AvatarExists,
+		&i.AvatarLastRequested,
 	)
 	return i, err
 }
 
 const getPlayerByName = `-- name: GetPlayerByName :one
-SELECT playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested FROM Players
+SELECT playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested, AvatarExists, AvatarLastRequested FROM Players
 WHERE Username = ?
 `
 
@@ -76,12 +80,14 @@ func (q *Queries) GetPlayerByName(ctx context.Context, username string) (Player,
 		&i.Figureexists,
 		&i.Userdatalastrequested,
 		&i.Figurelastrequested,
+		&i.AvatarExists,
+		&i.AvatarLastRequested,
 	)
 	return i, err
 }
 
 const listPlayers = `-- name: ListPlayers :many
-SELECT playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested FROM Players
+SELECT playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested, AvatarExists, AvatarLastRequested FROM Players
 ORDER BY PlayerID
 `
 
@@ -104,6 +110,8 @@ func (q *Queries) ListPlayers(ctx context.Context) ([]Player, error) {
 			&i.Figureexists,
 			&i.Userdatalastrequested,
 			&i.Figurelastrequested,
+			&i.AvatarExists,
+			&i.AvatarLastRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -118,12 +126,39 @@ func (q *Queries) ListPlayers(ctx context.Context) ([]Player, error) {
 	return items, nil
 }
 
+const updatePlayerAvatar = `-- name: UpdatePlayerAvatar :one
+UPDATE Players
+SET AvatarExists = 1,
+    AvatarLastRequested = DATETIME('now') 
+WHERE PlayerID = ?
+RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested, AvatarExists, AvatarLastRequested
+`
+
+func (q *Queries) UpdatePlayerAvatar(ctx context.Context, playerid int64) (Player, error) {
+	row := q.db.QueryRowContext(ctx, updatePlayerAvatar, playerid)
+	var i Player
+	err := row.Scan(
+		&i.Playerid,
+		&i.Username,
+		&i.Figurestring,
+		&i.Motto,
+		&i.Membersince,
+		&i.Userdataexists,
+		&i.Figureexists,
+		&i.Userdatalastrequested,
+		&i.Figurelastrequested,
+		&i.AvatarExists,
+		&i.AvatarLastRequested,
+	)
+	return i, err
+}
+
 const updatePlayerFigure = `-- name: UpdatePlayerFigure :one
 UPDATE Players
 SET FigureExists = 1,
     FigureLastRequested = DATETIME('now') 
 WHERE PlayerID = ?
-RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested
+RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested, AvatarExists, AvatarLastRequested
 `
 
 func (q *Queries) UpdatePlayerFigure(ctx context.Context, playerid int64) (Player, error) {
@@ -139,35 +174,26 @@ func (q *Queries) UpdatePlayerFigure(ctx context.Context, playerid int64) (Playe
 		&i.Figureexists,
 		&i.Userdatalastrequested,
 		&i.Figurelastrequested,
+		&i.AvatarExists,
+		&i.AvatarLastRequested,
 	)
 	return i, err
 }
 
-const updatePlayerUserData = `-- name: UpdatePlayerUserData :one
+const updatePlayerFigureString = `-- name: UpdatePlayerFigureString :one
 UPDATE Players
-SET FigureString = ?,
-    Motto = ?,
-    Membersince = ?,
-    UserDataExists = 1,
-    UserDataLastRequested = DATETIME('now')
+SET FigureString = ?
 WHERE PlayerID = ?
-RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested
+RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested, AvatarExists, AvatarLastRequested
 `
 
-type UpdatePlayerUserDataParams struct {
+type UpdatePlayerFigureStringParams struct {
 	Figurestring sql.NullString
-	Motto        sql.NullString
-	Membersince  sql.NullTime
 	Playerid     int64
 }
 
-func (q *Queries) UpdatePlayerUserData(ctx context.Context, arg UpdatePlayerUserDataParams) (Player, error) {
-	row := q.db.QueryRowContext(ctx, updatePlayerUserData,
-		arg.Figurestring,
-		arg.Motto,
-		arg.Membersince,
-		arg.Playerid,
-	)
+func (q *Queries) UpdatePlayerFigureString(ctx context.Context, arg UpdatePlayerFigureStringParams) (Player, error) {
+	row := q.db.QueryRowContext(ctx, updatePlayerFigureString, arg.Figurestring, arg.Playerid)
 	var i Player
 	err := row.Scan(
 		&i.Playerid,
@@ -179,6 +205,43 @@ func (q *Queries) UpdatePlayerUserData(ctx context.Context, arg UpdatePlayerUser
 		&i.Figureexists,
 		&i.Userdatalastrequested,
 		&i.Figurelastrequested,
+		&i.AvatarExists,
+		&i.AvatarLastRequested,
+	)
+	return i, err
+}
+
+const updatePlayerUserData = `-- name: UpdatePlayerUserData :one
+UPDATE Players
+SET Motto = ?,
+    Membersince = ?,
+    UserDataExists = 1,
+    UserDataLastRequested = DATETIME('now')
+WHERE PlayerID = ?
+RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested, AvatarExists, AvatarLastRequested
+`
+
+type UpdatePlayerUserDataParams struct {
+	Motto       sql.NullString
+	Membersince sql.NullTime
+	Playerid    int64
+}
+
+func (q *Queries) UpdatePlayerUserData(ctx context.Context, arg UpdatePlayerUserDataParams) (Player, error) {
+	row := q.db.QueryRowContext(ctx, updatePlayerUserData, arg.Motto, arg.Membersince, arg.Playerid)
+	var i Player
+	err := row.Scan(
+		&i.Playerid,
+		&i.Username,
+		&i.Figurestring,
+		&i.Motto,
+		&i.Membersince,
+		&i.Userdataexists,
+		&i.Figureexists,
+		&i.Userdatalastrequested,
+		&i.Figurelastrequested,
+		&i.AvatarExists,
+		&i.AvatarLastRequested,
 	)
 	return i, err
 }
