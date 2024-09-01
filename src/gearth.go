@@ -1,6 +1,7 @@
 package gchat
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -29,6 +30,8 @@ type ClientMessage struct {
 	EncodedContent string
 	Time           string
 	MessageType    MessageType
+	FigureExists   bool
+	AvatarExists   bool
 }
 
 type ClientPlayer struct {
@@ -149,7 +152,7 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 
 	colourPair := getUserColours(user.Name)
 
-	go sendEvent(Message, ClientMessage{
+	clientMessage := ClientMessage{
 		Username:       user.Name,
 		Gender:         genders[user.Gender],
 		ChatBackground: colourPair.BackgroundColour,
@@ -157,7 +160,17 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 		EncodedContent: base64.StdEncoding.EncodeToString([]byte(msg)), // encode msg
 		Time:           time.Now().Format("15:04"),
 		MessageType:    messageType,
-	})
+	}
+
+	dbPlayer, err := queries.GetPlayerByName(context.Background(), user.Name)
+	if err != nil {
+		log.Printf("error getting player from db for: %s: %v\n", user.Name, err)
+	} else {
+		clientMessage.AvatarExists = dbPlayer.AvatarExists.Bool
+		clientMessage.FigureExists = dbPlayer.Figureexists.Bool
+	}
+
+	go sendEvent(Message, clientMessage)
 }
 
 func handleSendHabboChat(data WebMessage) {

@@ -287,7 +287,7 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 	mgr := gd.NewManager(host)
 	renderer := imager.NewAvatarImager(mgr)
 
-	err := util.LoadGameData(mgr, "Loading game data...",
+	err := util.LoadGameData(mgr, "",
 		gd.GameDataFigure, gd.GameDataFigureMap,
 		gd.GameDataVariables, gd.GameDataAvatar)
 	if err != nil {
@@ -295,12 +295,13 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 	}
 
 	var parts []imager.AvatarPart
+
 	// renderer.Parts is prone to panicking.. hack to get around it
 	func() {
 		defer func() {
 			if excp := recover(); excp != nil {
 				err = fmt.Errorf(
-					"caught exception in render parts for player: %s, recovering: %+v\n", player.Username, excp,
+					"caught exception in render parts for player: %s, recovering: %+v", player.Username, excp,
 				)
 			}
 		}()

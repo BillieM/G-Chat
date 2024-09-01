@@ -1,6 +1,7 @@
 /tmp
 node_modules/
 .vscode/
-static/
+static/avatars/
+static/figures/
 .DS_Store
 db/app.db
