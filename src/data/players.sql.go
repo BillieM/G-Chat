@@ -7,7 +7,34 @@ package data
 
 import (
 	"context"
+	"database/sql"
 )
+
+const createPlayer = `-- name: CreatePlayer :one
+INSERT INTO Players (
+  Username
+) VALUES (
+  ?
+)
+RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested
+`
+
+func (q *Queries) CreatePlayer(ctx context.Context, username string) (Player, error) {
+	row := q.db.QueryRowContext(ctx, createPlayer, username)
+	var i Player
+	err := row.Scan(
+		&i.Playerid,
+		&i.Username,
+		&i.Figurestring,
+		&i.Motto,
+		&i.Membersince,
+		&i.Userdataexists,
+		&i.Figureexists,
+		&i.Userdatalastrequested,
+		&i.Figurelastrequested,
+	)
+	return i, err
+}
 
 const getPlayer = `-- name: GetPlayer :one
 SELECT playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested FROM Players
@@ -89,4 +116,69 @@ func (q *Queries) ListPlayers(ctx context.Context) ([]Player, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updatePlayerFigure = `-- name: UpdatePlayerFigure :one
+UPDATE Players
+SET FigureExists = 1,
+    FigureLastRequested = DATETIME('now') 
+WHERE PlayerID = ?
+RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested
+`
+
+func (q *Queries) UpdatePlayerFigure(ctx context.Context, playerid int64) (Player, error) {
+	row := q.db.QueryRowContext(ctx, updatePlayerFigure, playerid)
+	var i Player
+	err := row.Scan(
+		&i.Playerid,
+		&i.Username,
+		&i.Figurestring,
+		&i.Motto,
+		&i.Membersince,
+		&i.Userdataexists,
+		&i.Figureexists,
+		&i.Userdatalastrequested,
+		&i.Figurelastrequested,
+	)
+	return i, err
+}
+
+const updatePlayerUserData = `-- name: UpdatePlayerUserData :one
+UPDATE Players
+SET FigureString = ?,
+    Motto = ?,
+    Membersince = ?,
+    UserDataExists = 1,
+    UserDataLastRequested = DATETIME('now')
+WHERE PlayerID = ?
+RETURNING playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested
+`
+
+type UpdatePlayerUserDataParams struct {
+	Figurestring sql.NullString
+	Motto        sql.NullString
+	Membersince  sql.NullTime
+	Playerid     int64
+}
+
+func (q *Queries) UpdatePlayerUserData(ctx context.Context, arg UpdatePlayerUserDataParams) (Player, error) {
+	row := q.db.QueryRowContext(ctx, updatePlayerUserData,
+		arg.Figurestring,
+		arg.Motto,
+		arg.Membersince,
+		arg.Playerid,
+	)
+	var i Player
+	err := row.Scan(
+		&i.Playerid,
+		&i.Username,
+		&i.Figurestring,
+		&i.Motto,
+		&i.Membersince,
+		&i.Userdataexists,
+		&i.Figureexists,
+		&i.Userdatalastrequested,
+		&i.Figurelastrequested,
+	)
+	return i, err
 }

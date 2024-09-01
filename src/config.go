@@ -8,6 +8,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	g "xabbo.b7c.io/goearth"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -56,7 +58,7 @@ func loadConfig() {
 }
 
 func loadDB() error {
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite3", "./db/app.db")
 	if err != nil {
 		return err
 	}
