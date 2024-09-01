@@ -14,3 +14,5 @@ golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 h1:yixxcjnhBmY0nkL253HFVIm0J
 golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8/go.mod h1:jj3sYF3dwk5D+ghuXyeI3r5MFf+NT2An6/9dOA95KSI=
 xabbo.b7c.io/goearth v0.4.0 h1:89N8JMQo4EiwFvuq+8jw+t+wonFb4LqIYXpX3QjFh3E=
 xabbo.b7c.io/goearth v0.4.0/go.mod h1:6s+shq3X0CO5L2Jt6t6yHMCzsNHA1jU2IbpvOqgFkpo=
+xabbo.b7c.io/nx v0.1.7 h1:VTWxNY8FDx01pepHVJedbF9Ej8JznxotfKIMlzRc85k=
+xabbo.b7c.io/nx v0.1.7/go.mod h1:azycl6Xz2ScW2PSr12AaijJSswfYgBbN7qUx+Avageo=

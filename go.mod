@@ -14,4 +14,5 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	go.uber.org/ratelimit v0.3.1 // indirect
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
+	xabbo.b7c.io/nx v0.1.7 // indirect
 )
