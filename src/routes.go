@@ -20,6 +20,9 @@ func initWebServer() {
 	http.HandleFunc("/", homeFunc)
 	http.HandleFunc("/settings", settingsFunc)
 
+	// components
+	http.HandleFunc("/playercard/{username}", playerCardFunc)
+
 	// websocket connect
 	http.HandleFunc("/chat", chatFunc)
 
@@ -36,7 +39,7 @@ func homeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	servePageTemplate(w, nil, "index")
+	servePageTemplate(w, nil, "index", "playercard")
 }
 
 func settingsFunc(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +61,21 @@ func settingsFunc(w http.ResponseWriter, r *http.Request) {
 		"BackgroundColourPicker": template.HTML(backgroundColourBuffer.String()),
 		"TextColourPicker":       template.HTML(textColourBuffer.String()),
 	}, "settings", "message")
+}
+
+func playerCardFunc(w http.ResponseWriter, r *http.Request) {
+
+	username := r.PathValue("username")
+
+	log.Println("username", username)
+
+	dbPlayer, err := queries.GetPlayerByName(r.Context(), username)
+	if err != nil {
+		log.Printf("error getting player: %s from db for player card: %v\n", username, err)
+		serveComponentTemplate(w, "playercard", nil)
+		return
+	}
+	serveComponentTemplate(w, "playercard", dbPlayer)
 }
 
 func chatFunc(w http.ResponseWriter, r *http.Request) {

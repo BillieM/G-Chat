@@ -3,18 +3,27 @@
 {{end}}
 
 {{define "content"}}
-    <div class="flex flex-col h-full" hx-ext="ws" ws-connect="/chat">
-        <div class="flex-grow overflow-y-auto p-4" id="events">
-            <!-- show messages/ events here-->
+    <div class="flex flex-row h-full">
+        <div class="flex flex-col w-full pb-3 pl-3" hx-ext="ws" ws-connect="/chat">
+            <div class="flex-grow overflow-y-auto" id="events">
+                <!-- show messages/ events here-->
+            </div>
+            <form id="message-form" class="w-full join shadow-md pt-2" id="chat-send" ws-send>
+                <select name="type" class="select select-bordered max-w-xs join-item">
+                    <option value="say">Say</option>
+                    <option value="whisper">Whisper</option>
+                    <option value="shout" selected>Shout</option>
+                  </select>
+                <input id="message-text" name="chat" type="text" placeholder="Send message..." class="input input-bordered w-full join-item" />
+                <button class="btn join-item">Send</button>
+            </form>
         </div>
-        <form id="message-form" class="p-4 w-full join" id="chat-send" ws-send>
-            <select name="type" class="select select-bordered max-w-xs join-item">
-                <option value="say">Say</option>
-                <option value="whisper">Whisper</option>
-                <option value="shout" selected>Shout</option>
-              </select>
-            <input id="message-text" name="chat" type="text" placeholder="Send message..." class="input input-bordered w-full join-item" />
-            <button class="btn join-item">Send</button>
-        </form>
+        <div class="flex flex-col p-3">
+            <div class="flex-grow overflow-y-auto">
+                <!-- show list of users here -->
+                
+            </div>
+            {{ template "playercard"}}
+        </div>
     </div>
 {{end}}

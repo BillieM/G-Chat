@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 )
 
 func servePageTemplate(w io.Writer, data any, pageName string, componentNames ...string) {
@@ -23,15 +24,22 @@ func servePageTemplate(w io.Writer, data any, pageName string, componentNames ..
 		template.ParseFiles(templates...),
 	)
 
-	t.Execute(w, data)
+	err := t.Execute(w, data)
+	if err != nil {
+		log.Printf("error rendering page template: %s: %v\n", pageName, err)
+	}
 }
 
 func serveComponentTemplate(w io.Writer, templateName string, data any) {
+
 	t := template.Must(
 		template.ParseFiles(
 			fmt.Sprintf("templates/components/%s.html", templateName),
 		),
 	)
 
-	t.Execute(w, data)
+	err := t.Execute(w, data)
+	if err != nil {
+		log.Printf("error rendering component template: %s: %v\n", templateName, err)
+	}
 }

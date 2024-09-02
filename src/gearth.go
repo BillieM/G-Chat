@@ -57,17 +57,19 @@ func InitExt() {
 	ext.Intercept(in.OPC_OK).With(handleHabboEnterRoom)
 	ext.Intercept(in.USERS).With(handleHabboUsers)
 	ext.Intercept(in.LOGOUT).With(handleHabboRemoveUser)
-	ext.Run()
-}
 
-func handleInitialized(e g.InitArgs) {
-	log.Println("G-Chat initialized")
 	loadConfig()
 	err := loadDB()
 	if err != nil {
 		log.Panicf("error loading database: %e", err)
 	}
 	go initWebServer()
+
+	ext.Run()
+}
+
+func handleInitialized(e g.InitArgs) {
+	log.Println("G-Chat initialized")
 }
 
 func handleConnected(e g.ConnectArgs) {

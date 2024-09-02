@@ -5,7 +5,11 @@
              data-encoded-message="{{.EncodedContent}}" 
              data-event-type="message"
              data-type="{{.MessageType}}">
-             <div class="chat-image avatar">
+             <div class="chat-image avatar"
+                hx-post="/playercard/{{.Username}}"
+                hx-trigger="click"
+                hx-target="#player-card"
+                hx-swap="outerHTML">
                 {{ if .AvatarExists }}
                     <img src="/static/avatars/{{.Username}}.png">
                 {{ else }}

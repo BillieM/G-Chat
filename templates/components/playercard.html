@@ -1,0 +1,21 @@
+{{ block "playercard" .}}
+<div id="player-card" class="card card-side bg-base-200 shadow-md">
+    <figure>
+        {{ if .Figureexists }}
+            <img src="/static/figures/{{.Username}}.png">
+        {{ else }}
+            <img src="/static/images/basefigure.png">
+        {{ end }}
+    </figure>
+    <div class="card-body">
+        <h2 class="card-title">
+            {{ if .Username }}
+                {{ .Username }}
+            {{ else }}
+                No player selected!
+            {{ end }}
+        </h2>
+        <p>{{ if.Motto }} {{.Motto}} {{ end }}</p>
+    </div>
+</div>
+{{ end }}
