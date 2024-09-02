@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"g-chat/src/data"
+	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -25,11 +27,12 @@ var (
 		Author:      "Billie M",
 		Version:     "0.2",
 	})
-	activeConnections map[string]*websocket.Conn = make(map[string]*websocket.Conn)
-	upgrader                                     = websocket.Upgrader{}
-	users                                        = map[int]*ClientPlayer{}
-	usersPacketCount                             = 0
-	genders           map[string]string          = map[string]string{
+	activeConnections sync.Map
+	// activeConnections map[string]*websocket.Conn = make(map[string]*websocket.Conn)
+	upgrader                           = websocket.Upgrader{}
+	users                              = map[int]*ClientPlayer{}
+	usersPacketCount                   = 0
+	genders          map[string]string = map[string]string{
 		"f":       "♀",
 		"m":       "♂",
 		"unknown": "",
@@ -52,6 +55,20 @@ type Config struct {
 type ColourPair struct {
 	BackgroundColour string `json:"backgroundColour"`
 	TextColour       string `json:"textColour"`
+}
+
+func createDirs() {
+	neededDirs := []string{
+		"static/images/avatars",
+		"static/images/figures",
+	}
+
+	for _, dir := range neededDirs {
+		err := os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			log.Panicf("error creating dir: %s: %v\n", dir, err)
+		}
+	}
 }
 
 func loadConfig() {

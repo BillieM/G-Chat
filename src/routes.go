@@ -86,10 +86,10 @@ func chatFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	connUuid := uuid.NewString()
-	activeConnections[connUuid] = c
+	activeConnections.Store(connUuid, c)
 	log.Printf("connection %s opened\n", connUuid)
 	defer func() {
-		delete(activeConnections, connUuid)
+		activeConnections.Delete(connUuid)
 		c.Close()
 		log.Printf("connection %s closed\n", connUuid)
 	}()

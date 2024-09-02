@@ -58,6 +58,7 @@ func InitExt() {
 	ext.Intercept(in.USERS).With(handleHabboUsers)
 	ext.Intercept(in.LOGOUT).With(handleHabboRemoveUser)
 
+	createDirs()
 	loadConfig()
 	err := loadDB()
 	if err != nil {
@@ -172,7 +173,7 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 		clientMessage.FigureExists = dbPlayer.Figureexists.Bool
 	}
 
-	go sendEvent(Message, clientMessage)
+	sendEvent(Message, clientMessage)
 }
 
 func handleSendHabboChat(data WebMessage) {

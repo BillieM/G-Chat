@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+
+	"github.com/gorilla/websocket"
 )
 
 type EventType string
@@ -22,14 +24,16 @@ func sendEvent(eventType EventType, data any) {
 	var buf bytes.Buffer
 	serveComponentTemplate(&buf, string(eventType), data)
 
-	for _, conn := range activeConnections {
+	activeConnections.Range(func(_ any, val any) bool {
+		conn := val.(*websocket.Conn)
 		err := conn.WriteMessage(1, buf.Bytes())
 		if err != nil {
 			log.Println(fmt.Errorf(
 				"error with %s: %w", eventType, err,
 			))
 		}
-	}
+		return true
+	})
 
 	log.Printf("event: %s successfully sent\n", eventType)
 }

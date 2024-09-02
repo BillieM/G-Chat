@@ -1,21 +1,28 @@
 {{ block "playercard" .}}
-<div id="player-card" class="card card-side bg-base-200 shadow-md">
-    <figure>
+<div id="player-card" class="flex flex-row bg-base-200 shadow-md w-72">
+    <div class="w-24 flex-none scale-90 hover:scale-100 duration-100">
         {{ if .Figureexists }}
-            <img src="/static/figures/{{.Username}}.png">
+            <img src="/static/images/figures/{{.Username}}.png">
         {{ else }}
             <img src="/static/images/basefigure.png">
         {{ end }}
-    </figure>
-    <div class="card-body">
-        <h2 class="card-title">
+    </div>
+    <div class="text p-3">
+        <h2 class="text-lg">
             {{ if .Username }}
                 {{ .Username }}
             {{ else }}
                 No player selected!
             {{ end }}
         </h2>
-        <p>{{ if.Motto }} {{.Motto}} {{ end }}</p>
+        {{ if not .Motto }} 
+            <p></p>
+        {{else}} 
+            <p>
+                {{.Motto}} 
+            </p>
+        {{ end }}
+
     </div>
 </div>
 {{ end }}
