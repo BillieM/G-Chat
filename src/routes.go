@@ -67,15 +67,18 @@ func playerCardFunc(w http.ResponseWriter, r *http.Request) {
 
 	username := r.PathValue("username")
 
-	log.Println("username", username)
-
 	dbPlayer, err := queries.GetPlayerByName(r.Context(), username)
 	if err != nil {
 		log.Printf("error getting player: %s from db for player card: %v\n", username, err)
 		serveComponentTemplate(w, "playercard", nil)
 		return
 	}
-	serveComponentTemplate(w, "playercard", dbPlayer)
+
+	serveComponentTemplate(w, "playercard", map[string]any{
+		"Username":     dbPlayer.Username,
+		"Motto":        dbPlayer.Motto.String,
+		"Figureexists": dbPlayer.Figureexists.Bool,
+	})
 }
 
 func chatFunc(w http.ResponseWriter, r *http.Request) {

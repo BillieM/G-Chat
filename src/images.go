@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	minimumTimeBetweenPlayerImageRequests time.Duration = time.Hour * 0
+	minimumTimeBetweenPlayerImageRequests time.Duration = time.Hour * 1
 	figureDataCacheTime                   time.Duration = time.Hour * 4
 )
 

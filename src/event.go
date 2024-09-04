@@ -35,5 +35,5 @@ func sendEvent(eventType EventType, data any) {
 		return true
 	})
 
-	log.Printf("event: %s successfully sent\n", eventType)
+	log.Printf("event: %s successfully sent to browser\n", eventType)
 }

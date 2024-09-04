@@ -27,12 +27,13 @@ var (
 		Author:      "Billie M",
 		Version:     "0.2",
 	})
-	activeConnections sync.Map
-	// activeConnections map[string]*websocket.Conn = make(map[string]*websocket.Conn)
-	upgrader                           = websocket.Upgrader{}
-	users                              = map[int]*ClientPlayer{}
-	usersPacketCount                   = 0
-	genders          map[string]string = map[string]string{
+	activeConnections  sync.Map
+	upgrader           = websocket.Upgrader{}
+	myPlayer           *ClientPlayer
+	players                              = map[int]*ClientPlayer{}
+	otherEntities                        = map[int]string{}
+	playersPacketCount                   = 0
+	genders            map[string]string = map[string]string{
 		"f":       "♀",
 		"m":       "♂",
 		"unknown": "",

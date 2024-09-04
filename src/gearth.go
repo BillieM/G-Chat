@@ -32,6 +32,7 @@ type ClientMessage struct {
 	MessageType    MessageType
 	FigureExists   bool
 	AvatarExists   bool
+	FromMe         bool
 }
 
 type ClientPlayer struct {
@@ -75,7 +76,12 @@ func handleInitialized(e g.InitArgs) {
 
 func handleConnected(e g.ConnectArgs) {
 	log.Printf("Game connected (%s)\n", e.Host)
+	ext.Send(out.GETFLATINFO)
+	ext.Send(out.GETINTERST)
+	ext.Send(out.GETROOMAD)
+	ext.Send(out.G_HMAP)
 	ext.Send(out.G_USRS)
+	ext.Send(out.G_STAT)
 }
 
 func handleDisconnected() {
@@ -83,8 +89,8 @@ func handleDisconnected() {
 }
 
 func handleHabboEnterRoom(e *g.Intercept) {
-	usersPacketCount = 0
-	clear(users)
+	playersPacketCount = 0
+	clear(players)
 }
 
 func handleHabboRemoveUser(e *g.Intercept) {
@@ -93,12 +99,12 @@ func handleHabboRemoveUser(e *g.Intercept) {
 	if err != nil {
 		return
 	}
-	if user, ok := users[index]; ok {
+	if player, ok := players[index]; ok {
 		go sendEvent(Notification, map[string]string{
-			"Content": fmt.Sprintf("%s left the room!", user.Name),
+			"Content": fmt.Sprintf("%s left the room!", player.Name),
 		})
-		log.Printf("* %s left the room.", user.Name)
-		delete(users, index)
+		log.Printf("* %s left the room.", player.Name)
+		delete(players, index)
 	}
 }
 
@@ -109,20 +115,32 @@ func handleHabboUsers(e *g.Intercept) {
 	// The second USERS packet contains a single user, yourself.
 	// The following USERS packets indicate someone entering the room.
 	var newPlayers []ClientPlayer
-	usersPacketCount++
+	playersPacketCount++
 	for range e.Packet.ReadInt() {
 		var player ClientPlayer
 		e.Packet.Read(&player)
 		if player.Type == 1 {
-			if usersPacketCount >= 3 {
+
+			if playersPacketCount == 2 {
+				myPlayer = &player
+			}
+
+			if playersPacketCount >= 3 {
 				go sendEvent(Notification, map[string]string{
 					"Content": fmt.Sprintf("%s entered the room!", player.Name),
 				})
 				log.Printf("* %s entered the room\n", player.Name)
 			}
-			users[player.Index] = &player
+
+			players[player.Index] = &player
 			newPlayers = append(newPlayers, player)
+		} else {
+			otherEntities[player.Index] = player.Name
+			if player.Type != 2 {
+				log.Printf("non 1 player 1 or 2 type, name: %s, type: %v\n", player.Name, player.Type)
+			}
 		}
+		log.Printf("user packet: %v for user: %s\n", playersPacketCount, player.Name)
 	}
 	go playersApiUpdate(newPlayers)
 }
@@ -143,21 +161,27 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 	index := e.Packet.ReadInt() // skip entity index
 	msg := e.Packet.ReadString()
 
-	user, ok := users[index]
+	player, ok := players[index]
 
 	if !ok {
+		otherEntity, ok := otherEntities[index]
+		if ok {
+			log.Printf("message from other entity (likely pet), ignoring: %s", otherEntity)
+			return
+		}
+
 		log.Println("error finding user, falling back to default")
-		user = &ClientPlayer{
+		player = &ClientPlayer{
 			Name:   "unknown",
 			Gender: "unknown",
 		}
 	}
 
-	colourPair := getUserColours(user.Name)
+	colourPair := getUserColours(player.Name)
 
 	clientMessage := ClientMessage{
-		Username:       user.Name,
-		Gender:         genders[user.Gender],
+		Username:       player.Name,
+		Gender:         genders[player.Gender],
 		ChatBackground: colourPair.BackgroundColour,
 		ChatText:       colourPair.TextColour,
 		EncodedContent: base64.StdEncoding.EncodeToString([]byte(msg)), // encode msg
@@ -165,9 +189,9 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 		MessageType:    messageType,
 	}
 
-	dbPlayer, err := queries.GetPlayerByName(context.Background(), user.Name)
+	dbPlayer, err := queries.GetPlayerByName(context.Background(), player.Name)
 	if err != nil {
-		log.Printf("error getting player from db for: %s: %v\n", user.Name, err)
+		log.Printf("error getting player from db for: %s: %v\n", player.Name, err)
 	} else {
 		clientMessage.AvatarExists = dbPlayer.AvatarExists.Bool
 		clientMessage.FigureExists = dbPlayer.Figureexists.Bool
