@@ -3,5 +3,7 @@ node_modules/
 .vscode/
 static/images/avatars/
 static/images/figures/
+static/js/
+static/css/
 .DS_Store
 db/app.db
