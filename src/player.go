@@ -14,9 +14,7 @@ import (
 )
 
 const (
-	figureSize                         string        = "l"
 	userDataEndpoint                   string        = "https://origins.habbo.com/api/public/users?name=%s"
-	figureEndpoint                     string        = "https://www.habbo.com/habbo-imaging/avatarimage?size=%s&figure=%s"
 	minimumTimeBetweenUserDataRequests time.Duration = time.Hour * 12
 )
 

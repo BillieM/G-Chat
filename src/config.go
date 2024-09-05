@@ -50,7 +50,6 @@ type Config struct {
 	PlayerColours     map[string]ColourPair `json:"playerColours"`
 	BackgroundColours []string              `json:"backgroundColours"`
 	TextColours       []string              `json:"textColours"`
-	PlayerUsername    string                `json:"playerUsername"`
 }
 
 type ColourPair struct {

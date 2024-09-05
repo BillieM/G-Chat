@@ -3,7 +3,6 @@ package gchat
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -12,28 +11,6 @@ import (
 	"xabbo.b7c.io/goearth/shockwave/in"
 	"xabbo.b7c.io/goearth/shockwave/out"
 )
-
-type MessageType string
-
-const (
-	Shout   MessageType = "shout"
-	Say     MessageType = "say"
-	Whisper MessageType = "whisper"
-)
-
-type ClientMessage struct {
-	Username       string
-	Gender         string
-	ChatBackground string
-	ChatText       string
-	Content        string
-	EncodedContent string
-	Time           string
-	MessageType    MessageType
-	FigureExists   bool
-	AvatarExists   bool
-	FromMe         bool
-}
 
 type ClientPlayer struct {
 	Index      int
@@ -66,6 +43,7 @@ func InitExt() {
 		log.Panicf("error loading database: %e", err)
 	}
 	go initWebServer()
+	go socketEventSender()
 
 	ext.Run()
 }
@@ -76,12 +54,8 @@ func handleInitialized(e g.InitArgs) {
 
 func handleConnected(e g.ConnectArgs) {
 	log.Printf("Game connected (%s)\n", e.Host)
-	ext.Send(out.GETFLATINFO)
 	ext.Send(out.GETINTERST)
-	ext.Send(out.GETROOMAD)
-	ext.Send(out.G_HMAP)
 	ext.Send(out.G_USRS)
-	ext.Send(out.G_STAT)
 }
 
 func handleDisconnected() {
@@ -100,10 +74,9 @@ func handleHabboRemoveUser(e *g.Intercept) {
 		return
 	}
 	if player, ok := players[index]; ok {
-		go sendEvent(Notification, map[string]string{
-			"Content": fmt.Sprintf("%s left the room!", player.Name),
-		})
-		log.Printf("* %s left the room.", player.Name)
+		otherLeaveRoomChannel <- OtherLeaveRoom{
+			Username: player.Name,
+		}
 		delete(players, index)
 	}
 }
@@ -126,10 +99,9 @@ func handleHabboUsers(e *g.Intercept) {
 			}
 
 			if playersPacketCount >= 3 {
-				go sendEvent(Notification, map[string]string{
-					"Content": fmt.Sprintf("%s entered the room!", player.Name),
-				})
-				log.Printf("* %s entered the room\n", player.Name)
+				otherEnterRoomChannel <- OtherEnterRoom{
+					Username: player.Name,
+				}
 			}
 
 			players[player.Index] = &player
@@ -140,7 +112,6 @@ func handleHabboUsers(e *g.Intercept) {
 				log.Printf("non 1 player 1 or 2 type, name: %s, type: %v\n", player.Name, player.Type)
 			}
 		}
-		log.Printf("user packet: %v for user: %s\n", playersPacketCount, player.Name)
 	}
 	go playersApiUpdate(newPlayers)
 }
@@ -179,7 +150,7 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 
 	colourPair := getUserColours(player.Name)
 
-	clientMessage := ClientMessage{
+	clientMessage := Message{
 		Username:       player.Name,
 		Gender:         genders[player.Gender],
 		ChatBackground: colourPair.BackgroundColour,
@@ -197,10 +168,10 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 		clientMessage.FigureExists = dbPlayer.Figureexists.Bool
 	}
 
-	sendEvent(Message, clientMessage)
+	messageChannel <- clientMessage
 }
 
-func handleSendHabboChat(data WebMessage) {
+func handleSendHabboChat(data MessageToSendToHabbo) {
 	switch data.MessageType {
 	case Say:
 		ext.Send(out.CHAT, data.Chat)

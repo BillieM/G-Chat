@@ -22,6 +22,8 @@ import (
 )
 
 const (
+	figureSize                            string        = "l"
+	figureEndpoint                        string        = "https://www.habbo.com/habbo-imaging/avatarimage?size=%s&figure=%s"
 	minimumTimeBetweenPlayerImageRequests time.Duration = time.Hour * 1
 	figureDataCacheTime                   time.Duration = time.Hour * 4
 )
@@ -138,7 +140,8 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 
 	var parts []imager.AvatarPart
 
-	// renderer.Parts is prone to panicking.. hack to get around it
+	// renderer.Parts is prone to panicking due to currently missing code to handle hats
+	// this is a temp hack to get around it
 	func() {
 		defer func() {
 			if excp := recover(); excp != nil {

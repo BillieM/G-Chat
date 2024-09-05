@@ -7,39 +7,76 @@ import (
 	"log"
 )
 
-func servePageTemplate(w io.Writer, data any, pageName string, componentNames ...string) {
+type templateType struct {
+	name string
+	path string
+}
 
-	templates := []string{
-		"templates/base.html",
-		"templates/components/navbar.html",
+var (
+	rootTemplate templateType = templateType{
+		name: "root",
+		path: "templates",
 	}
-
-	for _, componentName := range componentNames {
-		templates = append(templates, fmt.Sprintf("templates/components/%s.html", componentName))
+	pageTemplate templateType = templateType{
+		name: "page",
+		path: "templates/pages",
 	}
+	componentTemplate templateType = templateType{
+		name: "component",
+		path: "templates/components",
+	}
+)
 
-	templates = append(templates, fmt.Sprintf("templates/pages/%s.html", pageName))
+type appTemplate struct {
+	templateName      string
+	templateType      templateType
+	requiredTemplates []appTemplate
+}
 
-	t := template.Must(
-		template.ParseFiles(templates...),
-	)
+var (
+	baseTemplate appTemplate = generateAppTemplate("base", rootTemplate)
 
-	err := t.Execute(w, data)
-	if err != nil {
-		log.Printf("error rendering page template: %s: %v\n", pageName, err)
+	indexTemplate    appTemplate = generateAppTemplate("index", pageTemplate, baseTemplate, navbarTemplate, playerCardTemplate)
+	settingsTemplate appTemplate = generateAppTemplate("settings", pageTemplate, baseTemplate, navbarTemplate, messageTemplate)
+
+	colourPickerTemplate   appTemplate = generateAppTemplate("colourpicker", componentTemplate)
+	messageTemplate        appTemplate = generateAppTemplate("message", componentTemplate)
+	navbarTemplate         appTemplate = generateAppTemplate("navbar", componentTemplate)
+	notificationTemplate   appTemplate = generateAppTemplate("notification", componentTemplate)
+	otherEnterRoomTemplate appTemplate = generateAppTemplate("otherenterroom", componentTemplate, notificationTemplate)
+	otherLeaveRoomTemplate appTemplate = generateAppTemplate("otherleaveroom", componentTemplate, notificationTemplate)
+	playerCardTemplate     appTemplate = generateAppTemplate("playercard", componentTemplate)
+	playerLineTemplate     appTemplate = generateAppTemplate("playerline", componentTemplate)
+)
+
+func generateAppTemplate(templateName string, templateType templateType, requiredTemplates ...appTemplate) appTemplate {
+	return appTemplate{
+		templateName:      templateName,
+		templateType:      templateType,
+		requiredTemplates: requiredTemplates,
 	}
 }
 
-func serveComponentTemplate(w io.Writer, templateName string, data any) {
+func serveTemplate(w io.Writer, t appTemplate, data any) {
 
-	t := template.Must(
-		template.ParseFiles(
-			fmt.Sprintf("templates/components/%s.html", templateName),
-		),
+	var appTemplates []appTemplate = append([]appTemplate{}, t.requiredTemplates...)
+	appTemplates = append(appTemplates, t)
+
+	var templatePaths []string
+
+	for _, appTemplate := range appTemplates {
+		templatePaths = append(
+			templatePaths,
+			fmt.Sprintf("%s/%s.html", appTemplate.templateType.path, appTemplate.templateName),
+		)
+	}
+
+	parsedTemplate := template.Must(
+		template.ParseFiles(templatePaths...),
 	)
 
-	err := t.Execute(w, data)
+	err := parsedTemplate.Execute(w, data)
 	if err != nil {
-		log.Printf("error rendering component template: %s: %v\n", templateName, err)
+		log.Printf("error rendering page template: %s: %v\n", t.templateName, err)
 	}
 }

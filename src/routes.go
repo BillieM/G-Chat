@@ -39,7 +39,7 @@ func homeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	servePageTemplate(w, nil, "index", "playercard")
+	serveTemplate(w, indexTemplate, nil)
 }
 
 func settingsFunc(w http.ResponseWriter, r *http.Request) {
@@ -47,20 +47,19 @@ func settingsFunc(w http.ResponseWriter, r *http.Request) {
 	var backgroundColourBuffer bytes.Buffer
 	var textColourBuffer bytes.Buffer
 
-	serveComponentTemplate(&backgroundColourBuffer, "colourpicker", config.BackgroundColours)
-	serveComponentTemplate(&textColourBuffer, "colourpicker", config.TextColours)
+	serveTemplate(&backgroundColourBuffer, colourPickerTemplate, config.BackgroundColours)
+	serveTemplate(&textColourBuffer, colourPickerTemplate, config.TextColours)
 
-	servePageTemplate(w, map[string]any{
+	serveTemplate(w, settingsTemplate, map[string]any{
 		"Config": config,
 		"Message": map[string]any{
-			"Time":     time.Now(),
-			"Gender":   "♀",
-			"Username": config.PlayerUsername,
-			"Content":  "Example message!",
+			"Time":    time.Now(),
+			"Gender":  "♀",
+			"Content": "Example message!",
 		},
 		"BackgroundColourPicker": template.HTML(backgroundColourBuffer.String()),
 		"TextColourPicker":       template.HTML(textColourBuffer.String()),
-	}, "settings", "message")
+	})
 }
 
 func playerCardFunc(w http.ResponseWriter, r *http.Request) {
@@ -70,11 +69,11 @@ func playerCardFunc(w http.ResponseWriter, r *http.Request) {
 	dbPlayer, err := queries.GetPlayerByName(r.Context(), username)
 	if err != nil {
 		log.Printf("error getting player: %s from db for player card: %v\n", username, err)
-		serveComponentTemplate(w, "playercard", nil)
+		serveTemplate(w, playerCardTemplate, nil)
 		return
 	}
 
-	serveComponentTemplate(w, "playercard", map[string]any{
+	serveTemplate(w, playerCardTemplate, map[string]any{
 		"Username":     dbPlayer.Username,
 		"Motto":        dbPlayer.Motto.String,
 		"Figureexists": dbPlayer.Figureexists.Bool,
@@ -113,9 +112,9 @@ func chatFunc(w http.ResponseWriter, r *http.Request) {
 			log.Println("write:", err)
 			break
 		}
-		var wsMessage WebMessage
-		json.Unmarshal(message, &wsMessage)
-		handleSendHabboChat(wsMessage)
+		var messageToSendToHabbo MessageToSendToHabbo
+		json.Unmarshal(message, &messageToSendToHabbo)
+		handleSendHabboChat(messageToSendToHabbo)
 	}
 }
 
@@ -123,7 +122,7 @@ func staticFunc(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if strings.HasSuffix(path, "js") {
 		w.Header().Set("Content-Type", "text/javascript")
-	} else {
+	} else if strings.HasSuffix(path, "css") {
 		w.Header().Set("Content-Type", "text/css")
 	}
 	data, err := os.ReadFile(path[1:])
