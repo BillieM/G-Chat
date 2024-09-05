@@ -6,6 +6,6 @@ ALTER TABLE Players ADD AvatarLastRequested DATETIME;
 
 -- +goose Down
 -- +goose StatementBegin
-ALTER TABLE Players DROP AvatarExists BOOLEAN;
-ALTER TABLE Players DROP AvatarLastRequested DATETIME;
+ALTER TABLE Players DROP AvatarExists;
+ALTER TABLE Players DROP AvatarLastRequested;
 -- +goose StatementEnd

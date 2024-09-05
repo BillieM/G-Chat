@@ -44,6 +44,7 @@ func InitExt() {
 	}
 	go initWebServer()
 	go socketEventSender()
+	go playersAPIUpdater()
 
 	ext.Run()
 }
@@ -87,7 +88,6 @@ func handleHabboUsers(e *g.Intercept) {
 	// is the list of users that are already in the room.
 	// The second USERS packet contains a single user, yourself.
 	// The following USERS packets indicate someone entering the room.
-	var newPlayers []ClientPlayer
 	playersPacketCount++
 	for range e.Packet.ReadInt() {
 		var player ClientPlayer
@@ -103,17 +103,17 @@ func handleHabboUsers(e *g.Intercept) {
 					Username: player.Name,
 				}
 			}
-
 			players[player.Index] = &player
-			newPlayers = append(newPlayers, player)
+			playersAPIChannel <- player
 		} else {
 			otherEntities[player.Index] = player.Name
 			if player.Type != 2 {
 				log.Printf("non 1 player 1 or 2 type, name: %s, type: %v\n", player.Name, player.Type)
 			}
 		}
+
 	}
-	go playersApiUpdate(newPlayers)
+
 }
 
 func handleReceiveHabboSay(e *g.Intercept) {
@@ -166,6 +166,10 @@ func handleReceiveHabboChat(e *g.Intercept, messageType MessageType) {
 	} else {
 		clientMessage.AvatarExists = dbPlayer.AvatarExists.Bool
 		clientMessage.FigureExists = dbPlayer.Figureexists.Bool
+	}
+
+	if player.Index == myPlayer.Index {
+		clientMessage.FromMe = true
 	}
 
 	messageChannel <- clientMessage

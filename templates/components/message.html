@@ -1,6 +1,9 @@
 <div id="events" hx-swap-oob="beforeend">
     {{block "message" .}} 
-        <div class="chat chat-start event" 
+        <div class="chat event 
+                    {{ if .FromMe }} chat-end 
+                    {{ else }} chat-start
+                    {{ end }}" 
              data-username="{{.Username}}" 
              data-encoded-message="{{.EncodedContent}}" 
              data-event-type="message"

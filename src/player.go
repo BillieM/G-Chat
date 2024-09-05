@@ -11,11 +11,16 @@ import (
 	"time"
 
 	"go.uber.org/ratelimit"
+	"xabbo.b7c.io/nx"
 )
 
 const (
 	userDataEndpoint                   string        = "https://origins.habbo.com/api/public/users?name=%s"
 	minimumTimeBetweenUserDataRequests time.Duration = time.Hour * 12
+)
+
+var (
+	playersAPIChannel chan ClientPlayer = make(chan ClientPlayer, 100)
 )
 
 type APIPlayer struct {
@@ -77,98 +82,148 @@ func playerApiUpdate(player ClientPlayer) {
 		}
 	}
 
-	if time.Since(dbPlayer.Userdatalastrequested.Time) > minimumTimeBetweenUserDataRequests {
-		apiPlayer, err := requestUserData(player.Name)
+	var forceUpdate bool
+
+	if myPlayer != nil && player.Index == myPlayer.Index && !dbPlayer.IsMe {
+		forceUpdate = true
+		dbPlayer, err = queries.UpdatePlayerSetIsMe(context.Background(), dbPlayer.Playerid)
 		if err != nil {
-			log.Printf("error requesting user data for %s: %v\n", player.Name, err)
+			log.Printf("error setting is me in db for: %s: %v\n", player.Name, err)
 			return
 		}
-
-		log.Printf("requested user data for: %s successfully\n", player.Name)
-
-		updatePlayerUserDataParams, err := apiPlayer.toUpdatePlayerUserDataParams(dbPlayer.Playerid)
-
+	} else if myPlayer != nil && player.Index != myPlayer.Index && dbPlayer.IsMe {
+		forceUpdate = true
+		dbPlayer, err = queries.UpdatePlayerSetNotMe(context.Background(), dbPlayer.Playerid)
 		if err != nil {
-			log.Printf("error generating updatePlayerUserDataParams from apiPlayer for: %s: %v\n", player.Name, err)
+			log.Printf("error setting not me in db for: %s: %v\n", player.Name, err)
 			return
 		}
+	}
 
-		dbPlayer, err = queries.UpdatePlayerUserData(context.Background(), updatePlayerUserDataParams)
+	userDataUpdateRequired := forceUpdate ||
+		time.Since(dbPlayer.Userdatalastrequested.Time) > minimumTimeBetweenUserDataRequests
+	figureUpdateRequired := forceUpdate ||
+		time.Since(dbPlayer.Figurelastrequested.Time) > minimumTimeBetweenPlayerImageRequests
+	avatarUpdateRequired := forceUpdate ||
+		time.Since(dbPlayer.AvatarLastRequested.Time) > minimumTimeBetweenPlayerImageRequests
 
+	if userDataUpdateRequired {
+		err := updateUserData(&dbPlayer)
 		if err != nil {
-			log.Printf("error updating playerUserData in db for: %s: %v\n", player.Name, err)
+			log.Printf("err updating user data for: %s: %v\n", dbPlayer.Username, err)
 			return
 		}
-
 		log.Printf("updated user data for: %s successfully\n", player.Name)
 	}
 
-	if time.Since(dbPlayer.Figurelastrequested.Time) > minimumTimeBetweenPlayerImageRequests ||
-		time.Since(dbPlayer.AvatarLastRequested.Time) > minimumTimeBetweenPlayerImageRequests {
+	if figureUpdateRequired || avatarUpdateRequired {
 
-		figure, err := convertToFigure(player)
+		figure, err := getAndUpdateFigure(&dbPlayer, player)
 		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		log.Printf("converted figure for: %s successfully\n", player.Name)
-
-		dbPlayer, err = queries.UpdatePlayerFigureString(context.Background(), data.UpdatePlayerFigureStringParams{
-			Figurestring: sql.NullString{String: figure.String(), Valid: true},
-			Playerid:     dbPlayer.Playerid,
-		})
-		if err != nil {
-			log.Printf("error updating player figure string in db for: %s: %v\n", player.Name, err)
+			log.Printf("err updating user data for: %s: %v\n", dbPlayer.Username, err)
 			return
 		}
 
 		// generate player avatar
-		if time.Since(dbPlayer.AvatarLastRequested.Time) > minimumTimeBetweenPlayerImageRequests {
-			go func() {
-				err = generatePlayerImage(dbPlayer, figure, Avatar)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-
-				dbPlayer, err = queries.UpdatePlayerAvatar(context.Background(), dbPlayer.Playerid)
-				if err != nil {
-					log.Printf("error updating player avatar in db for: %s: %v\n", player.Name, err)
-					return
-				}
-
-				log.Printf("updated avatar for: %s successfully\n", player.Name)
-			}()
+		if avatarUpdateRequired {
+			go updatePlayerAvatar(&dbPlayer, figure)
 		}
 
 		// get player figure
-		if time.Since(dbPlayer.Figurelastrequested.Time) > minimumTimeBetweenPlayerImageRequests {
-			go func() {
-				err = generatePlayerImage(dbPlayer, figure, Figure)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-
-				dbPlayer, err = queries.UpdatePlayerFigure(context.Background(), dbPlayer.Playerid)
-				if err != nil {
-					log.Printf("error updating player figure in db for: %s: %v\n", player.Name, err)
-					return
-				}
-
-				log.Printf("updated figure for: %s successfully\n", player.Name)
-			}()
+		if figureUpdateRequired {
+			go updatePlayerFigure(&dbPlayer, figure)
 		}
 	}
 }
 
-func playersApiUpdate(players []ClientPlayer) {
+func playersAPIUpdater() {
+	log.Println("players api updater initialized")
 	rl := ratelimit.New(5) // per second
-	for _, playerName := range players {
+	for p := range playersAPIChannel {
 		rl.Take()
-		playerApiUpdate(playerName)
+		go playerApiUpdate(p)
 	}
+}
+
+func updateUserData(dbPlayer *data.Player) error {
+	apiPlayer, err := requestUserData(dbPlayer.Username)
+	if err != nil {
+		log.Printf("err requesting user data for %s: %v\n", dbPlayer.Username, err)
+		return err
+	}
+
+	updatePlayerUserDataParams, err := apiPlayer.toUpdatePlayerUserDataParams(dbPlayer.Playerid)
+
+	if err != nil {
+		log.Printf("err generating update player user data params for: %s: %v\n", dbPlayer.Username, err)
+		return err
+	}
+
+	updatedDBPlayer, err := queries.UpdatePlayerUserData(context.Background(), updatePlayerUserDataParams)
+	dbPlayer = &updatedDBPlayer
+
+	if err != nil {
+		log.Printf("err updating player user data for: %s: %v\n", dbPlayer.Username, err)
+		return err
+	}
+
+	return nil
+}
+
+func getAndUpdateFigure(dbPlayer *data.Player, player ClientPlayer) (nx.Figure, error) {
+
+	figure, err := convertToFigure(player)
+	if err != nil {
+		log.Printf("err converting figure for %s: %v\n", dbPlayer.Username, err)
+		return nx.Figure{}, err
+	}
+
+	updatedDBPlayer, err := queries.UpdatePlayerFigureString(context.Background(), data.UpdatePlayerFigureStringParams{
+		Figurestring: sql.NullString{String: figure.String(), Valid: true},
+		Playerid:     dbPlayer.Playerid,
+	})
+	dbPlayer = &updatedDBPlayer
+
+	if err != nil {
+		log.Printf("error updating player figure string in db for: %s: %v\n", dbPlayer.Username, err)
+		return nx.Figure{}, err
+	}
+
+	return figure, nil
+}
+
+func updatePlayerAvatar(dbPlayer *data.Player, figure nx.Figure) {
+	err := generatePlayerImage(*dbPlayer, figure, Avatar)
+	if err != nil {
+		log.Printf("err generating player avatar for: %s: %v\n", dbPlayer.Username, err)
+		return
+	}
+
+	updatedDBPlayer, err := queries.UpdatePlayerAvatar(context.Background(), dbPlayer.Playerid)
+	dbPlayer = &updatedDBPlayer
+	if err != nil {
+		log.Printf("error updating player avatar in db for: %s: %v\n", dbPlayer.Username, err)
+		return
+	}
+
+	log.Printf("updated avatar for: %s successfully\n", dbPlayer.Username)
+}
+
+func updatePlayerFigure(dbPlayer *data.Player, figure nx.Figure) {
+	err := generatePlayerImage(*dbPlayer, figure, Figure)
+	if err != nil {
+		log.Printf("err generating player figure for: %s: %v\n", dbPlayer.Username, err)
+		return
+	}
+
+	updatedDBPlayer, err := queries.UpdatePlayerFigure(context.Background(), dbPlayer.Playerid)
+	dbPlayer = &updatedDBPlayer
+	if err != nil {
+		log.Printf("error updating player figure in db for: %s: %v\n", dbPlayer.Username, err)
+		return
+	}
+
+	log.Printf("updated figure for: %s successfully\n", dbPlayer.Username)
 }
 
 func requestUserData(playerName string) (APIPlayer, error) {

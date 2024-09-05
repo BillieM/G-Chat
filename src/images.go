@@ -135,7 +135,7 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 		gd.GameDataFigure, gd.GameDataFigureMap,
 		gd.GameDataVariables, gd.GameDataAvatar)
 	if err != nil {
-		return err
+		return fmt.Errorf("err loading game data: %w", err)
 	}
 
 	var parts []imager.AvatarPart
@@ -154,7 +154,7 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 	}()
 
 	if err != nil {
-		return err
+		return fmt.Errorf("err rendering parts: %w", err)
 	}
 
 	libraries := map[string]struct{}{}
@@ -166,14 +166,21 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 	for lib := range libraries {
 		err = mgr.LoadFigureParts(lib)
 		if err != nil {
-			return err
+			return fmt.Errorf("err loading figure parts: %w", err)
 		}
+	}
+
+	// 2 is right facing, 4 is left facing
+	var headDirection int = 2
+
+	if playerImageType == Avatar && player.IsMe {
+		headDirection = 4
 	}
 
 	avatar := imager.Avatar{
 		Figure:        figure,
 		Direction:     2,
-		HeadDirection: 2,
+		HeadDirection: headDirection,
 		Actions:       []nx.AvatarState{nx.AvatarState(nx.ActStand)},
 		Expression:    nx.AvatarState(nx.ActStand),
 		HeadOnly:      headOnly,
@@ -181,7 +188,7 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 
 	anim, err := renderer.Compose(avatar)
 	if err != nil {
-		return err
+		return fmt.Errorf("err composing avatar: %w", err)
 	}
 
 	// write image to buffer so we can do further processing (scaling/ cropping)
@@ -197,7 +204,7 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 	unprocessedImg, err := png.Decode(&imageBuffer)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("err decoding png: %w", err)
 	}
 
 	unprocessedImgRect := image.Rect(0, 0, playerImageType.UnscaledX, playerImageType.UnscaledY)
@@ -223,7 +230,7 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 
 	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("err opening file: %w", err)
 	}
 	defer f.Close()
 

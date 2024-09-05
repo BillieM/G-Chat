@@ -33,7 +33,6 @@ SET FigureString = ?
 WHERE PlayerID = ?
 RETURNING *;
 
-
 -- name: UpdatePlayerFigure :one
 UPDATE Players
 SET FigureExists = 1,
@@ -45,5 +44,17 @@ RETURNING *;
 UPDATE Players
 SET AvatarExists = 1,
     AvatarLastRequested = DATETIME('now') 
+WHERE PlayerID = ?
+RETURNING *;
+
+-- name: UpdatePlayerSetIsMe :one
+UPDATE Players 
+SET IsMe = 1
+WHERE PlayerID = ?
+RETURNING *;
+
+-- name: UpdatePlayerSetNotMe :one
+UPDATE Players 
+SET IsMe = 1
 WHERE PlayerID = ?
 RETURNING *;

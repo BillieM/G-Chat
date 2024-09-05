@@ -20,4 +20,5 @@ type Player struct {
 	Figurelastrequested   sql.NullTime
 	AvatarExists          sql.NullBool
 	AvatarLastRequested   sql.NullTime
+	IsMe                  bool
 }
