@@ -36,17 +36,19 @@ type appTemplate struct {
 var (
 	baseTemplate appTemplate = generateAppTemplate("base", rootTemplate)
 
-	indexTemplate    appTemplate = generateAppTemplate("index", pageTemplate, baseTemplate, navbarTemplate, playerCardTemplate)
+	indexTemplate    appTemplate = generateAppTemplate("index", pageTemplate, baseTemplate, navbarTemplate, playerCardTemplate, addToPlayerListTemplate)
 	settingsTemplate appTemplate = generateAppTemplate("settings", pageTemplate, baseTemplate, navbarTemplate, messageTemplate)
 
-	colourPickerTemplate   appTemplate = generateAppTemplate("colourpicker", componentTemplate)
-	messageTemplate        appTemplate = generateAppTemplate("message", componentTemplate)
-	navbarTemplate         appTemplate = generateAppTemplate("navbar", componentTemplate)
-	notificationTemplate   appTemplate = generateAppTemplate("notification", componentTemplate)
-	otherEnterRoomTemplate appTemplate = generateAppTemplate("otherenterroom", componentTemplate, notificationTemplate)
-	otherLeaveRoomTemplate appTemplate = generateAppTemplate("otherleaveroom", componentTemplate, notificationTemplate)
-	playerCardTemplate     appTemplate = generateAppTemplate("playercard", componentTemplate)
-	playerLineTemplate     appTemplate = generateAppTemplate("playerline", componentTemplate)
+	colourPickerTemplate         appTemplate = generateAppTemplate("colourpicker", componentTemplate)
+	messageTemplate              appTemplate = generateAppTemplate("message", componentTemplate)
+	navbarTemplate               appTemplate = generateAppTemplate("navbar", componentTemplate)
+	notificationTemplate         appTemplate = generateAppTemplate("notification", componentTemplate)
+	enterNotificationTemplate    appTemplate = generateAppTemplate("enternotification", componentTemplate, notificationTemplate)
+	addToPlayerListTemplate      appTemplate = generateAppTemplate("addtoplayerlist", componentTemplate)
+	clearPlayerListTemplate      appTemplate = generateAppTemplate("clearplayerlist", componentTemplate)
+	removeFromPlayerListTemplate appTemplate = generateAppTemplate("removefromplayerlist", componentTemplate)
+	exitNotificationTemplate     appTemplate = generateAppTemplate("exitnotification", componentTemplate, notificationTemplate)
+	playerCardTemplate           appTemplate = generateAppTemplate("playercard", componentTemplate)
 )
 
 func generateAppTemplate(templateName string, templateType templateType, requiredTemplates ...appTemplate) appTemplate {

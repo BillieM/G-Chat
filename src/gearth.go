@@ -46,6 +46,8 @@ func InitExt() {
 	go socketEventSender()
 	go playersAPIUpdater()
 
+	clearPlayerListChannel <- ClearPlayerList{}
+
 	ext.Run()
 }
 
@@ -66,6 +68,7 @@ func handleDisconnected() {
 func handleHabboEnterRoom(e *g.Intercept) {
 	playersPacketCount = 0
 	clear(players)
+	clearPlayerListChannel <- ClearPlayerList{}
 }
 
 func handleHabboRemoveUser(e *g.Intercept) {
@@ -75,7 +78,7 @@ func handleHabboRemoveUser(e *g.Intercept) {
 		return
 	}
 	if player, ok := players[index]; ok {
-		otherLeaveRoomChannel <- OtherLeaveRoom{
+		playerLeaveRoomChannel <- PlayerLeaveRoom{
 			Username: player.Name,
 		}
 		delete(players, index)
@@ -99,12 +102,12 @@ func handleHabboUsers(e *g.Intercept) {
 			}
 
 			if playersPacketCount >= 3 {
-				otherEnterRoomChannel <- OtherEnterRoom{
+				playerEnterRoomChannel <- PlayerEnterRoom{
 					Username: player.Name,
 				}
 			}
 			players[player.Index] = &player
-			playersAPIChannel <- player
+			playersProcessingChannel <- player
 		} else {
 			otherEntities[player.Index] = player.Name
 			if player.Type != 2 {

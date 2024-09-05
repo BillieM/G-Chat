@@ -3,6 +3,7 @@ package gchat
 import (
 	"bytes"
 	"fmt"
+	"g-chat/src/data"
 	"log"
 
 	"github.com/gorilla/websocket"
@@ -35,28 +36,26 @@ type Message struct {
 	FromMe         bool
 }
 
-type ILeaveRoom struct {
+type AddToPlayerList struct {
+	data.Player
+}
+
+type ClearPlayerList struct{}
+
+type PlayerLeaveRoom struct {
 	Username string
 }
 
-type IEnterRoom struct {
-	Username string
-}
-
-type OtherLeaveRoom struct {
-	Username string
-}
-
-type OtherEnterRoom struct {
+type PlayerEnterRoom struct {
 	Username string
 }
 
 var (
-	messageChannel        chan Message        = make(chan Message)
-	iLeaveRoomChannel     chan ILeaveRoom     = make(chan ILeaveRoom)
-	iEnterRoomChannel     chan IEnterRoom     = make(chan IEnterRoom)
-	otherLeaveRoomChannel chan OtherLeaveRoom = make(chan OtherLeaveRoom)
-	otherEnterRoomChannel chan OtherEnterRoom = make(chan OtherEnterRoom)
+	messageChannel         chan Message         = make(chan Message)
+	playerLeaveRoomChannel chan PlayerLeaveRoom = make(chan PlayerLeaveRoom)
+	playerEnterRoomChannel chan PlayerEnterRoom = make(chan PlayerEnterRoom)
+	addToPlayerListChannel chan AddToPlayerList = make(chan AddToPlayerList)
+	clearPlayerListChannel chan ClearPlayerList = make(chan ClearPlayerList)
 )
 
 func socketEventSender() {
@@ -65,15 +64,15 @@ func socketEventSender() {
 		select {
 		case e := <-messageChannel:
 			sendEvent(messageTemplate, e)
-		case e := <-iLeaveRoomChannel:
-			sendEvent(appTemplate{}, e)
-		case e := <-iEnterRoomChannel:
-			sendEvent(appTemplate{}, e)
-		case e := <-otherLeaveRoomChannel:
-			sendEvent(otherLeaveRoomTemplate, e)
-		case e := <-otherEnterRoomChannel:
-			sendEvent(otherEnterRoomTemplate, e)
-
+		case e := <-playerLeaveRoomChannel:
+			sendEvent(exitNotificationTemplate, e)
+			sendEvent(removeFromPlayerListTemplate, e)
+		case e := <-playerEnterRoomChannel:
+			sendEvent(enterNotificationTemplate, e)
+		case e := <-addToPlayerListChannel:
+			sendEvent(addToPlayerListTemplate, e)
+		case e := <-clearPlayerListChannel:
+			sendEvent(clearPlayerListTemplate, e)
 		}
 	}
 }
@@ -93,6 +92,10 @@ func sendEvent(template appTemplate, data any) {
 		}
 		return true
 	})
+
+	if template.templateName != messageTemplate.templateName {
+		log.Println(buf.String())
+	}
 
 	log.Printf("event: %s successfully sent to browser\n", template.templateName)
 }

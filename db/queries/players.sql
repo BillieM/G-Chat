@@ -10,6 +10,10 @@ WHERE Username = ?;
 SELECT * FROM Players
 ORDER BY PlayerID;
 
+-- name: ListPlayersByUsernames :many
+SELECT * FROM Players
+WHERE Username IN (sqlc.slice('usernames'));
+
 -- name: CreatePlayer :one
 INSERT INTO Players (
   Username

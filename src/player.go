@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	playersAPIChannel chan ClientPlayer = make(chan ClientPlayer, 100)
+	playersProcessingChannel chan ClientPlayer = make(chan ClientPlayer, 100)
 )
 
 type APIPlayer struct {
@@ -82,6 +82,8 @@ func playerApiUpdate(player ClientPlayer) {
 		}
 	}
 
+	addToPlayerListChannel <- AddToPlayerList{dbPlayer}
+
 	var forceUpdate bool
 
 	if myPlayer != nil && player.Index == myPlayer.Index && !dbPlayer.IsMe {
@@ -139,7 +141,7 @@ func playerApiUpdate(player ClientPlayer) {
 func playersAPIUpdater() {
 	log.Println("players api updater initialized")
 	rl := ratelimit.New(5) // per second
-	for p := range playersAPIChannel {
+	for p := range playersProcessingChannel {
 		rl.Take()
 		go playerApiUpdate(p)
 	}
@@ -242,4 +244,23 @@ func requestUserData(playerName string) (APIPlayer, error) {
 	}
 
 	return apiPlayer, nil
+}
+
+func getDBPlayers(clientPlayers map[int]*ClientPlayer) ([]data.Player, error) {
+	if len(clientPlayers) == 0 {
+		return []data.Player{}, nil
+	}
+
+	var usernames []string
+
+	for _, player := range clientPlayers {
+		usernames = append(usernames, player.Name)
+	}
+
+	dataPlayers, err := queries.ListPlayersByUsernames(context.Background(), usernames)
+	if err != nil {
+		return []data.Player{}, err
+	}
+
+	return dataPlayers, nil
 }

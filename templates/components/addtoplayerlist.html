@@ -1,0 +1,16 @@
+<div id="players" hx-swap-oob="beforeend">
+    {{ block "playerline" . }}
+    <li id="player-{{ .Username }}" class="join">
+        <div class="join-item">
+            {{ if .AvatarExists }}
+            <img src="/static/images/avatars/{{.Username}}.png">
+            {{ else }}
+                <img src="/static/images/baseavatar.png">
+            {{ end }}
+        </div>
+        <div class="join-item">
+            {{ .Username }}
+        </div>
+    </li>
+    {{ end }}
+</div>

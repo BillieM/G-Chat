@@ -8,6 +8,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 const createPlayer = `-- name: CreatePlayer :one
@@ -96,6 +97,57 @@ ORDER BY PlayerID
 
 func (q *Queries) ListPlayers(ctx context.Context) ([]Player, error) {
 	rows, err := q.db.QueryContext(ctx, listPlayers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Player
+	for rows.Next() {
+		var i Player
+		if err := rows.Scan(
+			&i.Playerid,
+			&i.Username,
+			&i.Figurestring,
+			&i.Motto,
+			&i.Membersince,
+			&i.Userdataexists,
+			&i.Figureexists,
+			&i.Userdatalastrequested,
+			&i.Figurelastrequested,
+			&i.AvatarExists,
+			&i.AvatarLastRequested,
+			&i.IsMe,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlayersByUsernames = `-- name: ListPlayersByUsernames :many
+SELECT playerid, username, figurestring, motto, membersince, userdataexists, figureexists, userdatalastrequested, figurelastrequested, AvatarExists, AvatarLastRequested, IsMe FROM Players
+WHERE Username IN (/*SLICE:usernames*/?)
+`
+
+func (q *Queries) ListPlayersByUsernames(ctx context.Context, usernames []string) ([]Player, error) {
+	query := listPlayersByUsernames
+	var queryParams []interface{}
+	if len(usernames) > 0 {
+		for _, v := range usernames {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:usernames*/?", strings.Repeat(",?", len(usernames))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:usernames*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}

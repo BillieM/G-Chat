@@ -39,7 +39,14 @@ func homeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serveTemplate(w, indexTemplate, nil)
+	dbPlayers, err := getDBPlayers(players)
+	if err != nil {
+		log.Println(err)
+	}
+
+	serveTemplate(w, indexTemplate, map[string]any{
+		"Players": dbPlayers,
+	})
 }
 
 func settingsFunc(w http.ResponseWriter, r *http.Request) {
