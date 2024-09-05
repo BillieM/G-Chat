@@ -111,7 +111,6 @@ func handleHabboUsers(e *g.Intercept) {
 				log.Printf("non 1 player 1 or 2 type, name: %s, type: %v\n", player.Name, player.Type)
 			}
 		}
-
 	}
 
 }

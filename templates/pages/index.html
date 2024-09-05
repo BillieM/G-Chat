@@ -3,27 +3,38 @@
 {{end}}
 
 {{define "content"}}
-    <div class="flex flex-row h-full">
-        <div class="flex flex-col w-full pb-3 pl-3" hx-ext="ws" ws-connect="/chat">
-            <div class="flex-grow overflow-y-auto" id="events">
-                <!-- show messages/ events here-->
+
+    <div class="drawer lg:drawer-open h-full">
+        <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+        <div class="drawer-content flex h-full">
+            <div class="flex flex-col w-full p-3 h-full" hx-ext="ws" ws-connect="/chat">
+                <div class="flex-grow overflow-y-auto" id="events">
+                    <!-- show messages/ events here-->
+                </div>
+                <form id="message-form" class="w-full join shadow-md pt-2" id="chat-send" ws-send>
+                    <select name="type" class="select select-bordered max-w-xs join-item">
+                        <option value="say">Say</option>
+                        <option value="whisper">Whisper</option>
+                        <option value="shout" selected>Shout</option>
+                    </select>
+                    <input id="message-text" name="chat" type="text" placeholder="Send message..." class="input input-bordered w-full join-item" maxlength="64"/>
+                    <button class="btn join-item">Send</button>
+                </form>
             </div>
-            <form id="message-form" class="w-full join shadow-md pt-2" id="chat-send" ws-send>
-                <select name="type" class="select select-bordered max-w-xs join-item">
-                    <option value="say">Say</option>
-                    <option value="whisper">Whisper</option>
-                    <option value="shout" selected>Shout</option>
-                  </select>
-                <input id="message-text" name="chat" type="text" placeholder="Send message..." class="input input-bordered w-full join-item" maxlength="64"/>
-                <button class="btn join-item">Send</button>
-            </form>
         </div>
-        <div class="flex flex-col p-3">
-            <div class="flex-grow overflow-y-auto">
-                <!-- show list of users here -->
-                
-            </div>
-            {{ template "playercard"}}
+        
+        <div class="drawer-side h-full">
+            <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+            <ul class="menu bg-base-300 text-base-content min-h-full w-80 p-4">
+                <!-- Sidebar content here -->
+                <div id = "users">
+
+                </div>>
+            </ul>
         </div>
     </div>
-{{end}}
+{{ end }}
+
+{{ define "navbarstartcontent" }}
+<label for="my-drawer" class="btn btn-primary drawer-button">Open drawer</label>
+{{ end }}
