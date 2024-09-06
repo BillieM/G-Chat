@@ -59,8 +59,9 @@ type ColourPair struct {
 
 func createDirs() {
 	neededDirs := []string{
-		"static/images/avatars",
 		"static/images/figures",
+		"static/images/avatars",
+		"static/images/avatars/me",
 	}
 
 	for _, dir := range neededDirs {

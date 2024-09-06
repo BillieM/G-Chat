@@ -25,14 +25,15 @@
         
         <div class="drawer-side h-full overflow-hidden">
             <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-            <h1> Players </h1>
-            <div class="menu bg-base-300 text-base-content w-80 h-full">
-                <!-- Sidebar content here -->
-                <div id = "players">
-                    {{ range .Players }}
+            <div class="bg-base-300 text-base-content w-80 h-full overflow-hidden flex flex-col">
+                <div class = "menu flex-grow overflow-y-auto">
+                    <div id = "players">
+                        {{ range .Players }}
                         {{ template "playerline" . }}
-                    {{ end }}
+                        {{ end }}
+                    </div>
                 </div>
+                {{ template "playercard" . }}
             </div>
         </div>
     </div>

@@ -1,15 +1,21 @@
 <div id="players" hx-swap-oob="beforeend">
     {{ block "playerline" . }}
-    <li id="player-{{ .Username }}" class="join">
-        <div class="join-item">
-            {{ if .AvatarExists }}
-            <img src="/static/images/avatars/{{.Username}}.png">
-            {{ else }}
-                <img src="/static/images/baseavatar.png">
-            {{ end }}
-        </div>
-        <div class="join-item">
-            {{ .Username }}
+    <li id="player-{{ .Username }}"
+        hx-post="/playercard/{{.Username}}"
+        hx-trigger="click"
+        hx-target="#player-card"
+        hx-swap="outerHTML">
+        <div class="join">
+            <div class="join-item avatar hover:scale-110 duration-100">
+                {{ if .AvatarExists.Bool }}
+                    <img src="/static/images/avatars/{{.Username}}.png">
+                {{ else }}
+                    <img src="/static/images/baseavatar.png">
+                {{ end }}
+            </div>
+            <div class="join-item">
+                {{ .Username }}
+            </div>
         </div>
     </li>
     {{ end }}

@@ -93,10 +93,6 @@ func sendEvent(template appTemplate, data any) {
 		return true
 	})
 
-	if template.templateName != messageTemplate.templateName {
-		log.Println(buf.String())
-	}
-
 	log.Printf("event: %s successfully sent to browser\n", template.templateName)
 }
 

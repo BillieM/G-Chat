@@ -28,28 +28,35 @@ const (
 	figureDataCacheTime                   time.Duration = time.Hour * 4
 )
 
-type PlayerImageType struct {
-	Type      string
+type playerImage struct {
+	Type      playerImageType
 	UnscaledX int
 	UnscaledY int
 }
 
+type playerImageType string
+
 var (
-	Figure PlayerImageType = PlayerImageType{
-		Type:      "figure",
+	FigureType playerImageType = "figure"
+	AvatarType playerImageType = "avatar"
+)
+
+var (
+	Figure playerImage = playerImage{
+		Type:      FigureType,
 		UnscaledX: 50,
 		UnscaledY: 100,
 	}
 
-	Avatar PlayerImageType = PlayerImageType{
-		Type:      "avatar",
+	Avatar playerImage = playerImage{
+		Type:      AvatarType,
 		UnscaledX: 50,
 		UnscaledY: 50,
 	}
 )
 
-func (p PlayerImageType) String() string {
-	return p.Type
+func (p playerImage) String() string {
+	return fmt.Sprint(p.Type)
 }
 
 /*
@@ -118,15 +125,13 @@ func loadOriginsFigureData() (*origins.FigureData, error) {
 	return figureData, nil
 }
 
-func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType PlayerImageType) error {
+func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType playerImage) error {
 
 	var headOnly bool
 
 	if playerImageType == Avatar {
 		headOnly = true
 	}
-
-	filePath := fmt.Sprintf("static/images/%ss/%s.png", playerImageType, player.Username)
 
 	mgr := gd.NewManager(host)
 	renderer := imager.NewAvatarImager(mgr)
@@ -170,73 +175,86 @@ func generatePlayerImage(player data.Player, figure nx.Figure, playerImageType P
 		}
 	}
 
-	// 2 is right facing, 4 is left facing
-	var headDirection int = 2
+	// hack to do 2 images for my char
+	var imgs []bool = []bool{false}
 
 	if playerImageType == Avatar && player.IsMe {
-		headDirection = 4
+		imgs = append(imgs, true)
 	}
 
-	avatar := imager.Avatar{
-		Figure:        figure,
-		Direction:     2,
-		HeadDirection: headDirection,
-		Actions:       []nx.AvatarState{nx.AvatarState(nx.ActStand)},
-		Expression:    nx.AvatarState(nx.ActStand),
-		HeadOnly:      headOnly,
+	for _, isMe := range imgs {
+
+		var meDir string = ""
+		var headDirection = 2
+		if isMe {
+			headDirection = 4
+			meDir = "/me"
+		}
+
+		avatar := imager.Avatar{
+			Figure:        figure,
+			Direction:     2,
+			HeadDirection: headDirection,
+			Actions:       []nx.AvatarState{nx.AvatarState(nx.ActStand)},
+			Expression:    nx.AvatarState(nx.ActStand),
+			HeadOnly:      headOnly,
+		}
+
+		anim, err := renderer.Compose(avatar)
+		if err != nil {
+			return fmt.Errorf("err composing avatar: %w", err)
+		}
+
+		// write image to buffer so we can do further processing (scaling/ cropping)
+		// sadly we are double encoding/ decoding to avoid messing with nx code
+		var imageBuffer bytes.Buffer
+
+		encoder := imager.NewEncoderPNG()
+		encoder.EncodeFrame(&imageBuffer, anim, 0, 0)
+
+		// figures should be 100x200 - scale x2 + canvas size change
+		// avatars should be 50x50 - canvas size change only
+
+		unprocessedImg, err := png.Decode(&imageBuffer)
+
+		if err != nil {
+			return fmt.Errorf("err decoding png: %w", err)
+		}
+
+		unprocessedImgRect := image.Rect(0, 0, playerImageType.UnscaledX, playerImageType.UnscaledY)
+		unscaledImg := image.NewRGBA(unprocessedImgRect)
+
+		fixedSizeImgStartPoint := image.Point{
+			X: (playerImageType.UnscaledX - unprocessedImg.Bounds().Max.X) / 2,
+			Y: (playerImageType.UnscaledY - unprocessedImg.Bounds().Max.Y) / 2,
+		}
+
+		r := image.Rectangle{fixedSizeImgStartPoint, fixedSizeImgStartPoint.Add(unprocessedImgRect.Size())}
+		draw.Draw(unscaledImg, r, unprocessedImg, unprocessedImgRect.Min, draw.Src)
+
+		var outImg *image.RGBA
+
+		if playerImageType == Figure {
+			// scale image too if figure
+			outImg = image.NewRGBA(image.Rect(0, 0, unscaledImg.Bounds().Max.X*2, unscaledImg.Bounds().Max.Y*2))
+			draw.NearestNeighbor.Scale(outImg, outImg.Rect, unscaledImg, unscaledImg.Bounds(), draw.Over, nil)
+		} else {
+			outImg = unscaledImg
+		}
+
+		filePath := fmt.Sprintf("static/images/%ss%s/%s.png", playerImageType, meDir, player.Username)
+
+		f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			return fmt.Errorf("err opening file: %w", err)
+		}
+		defer f.Close()
+
+		// Encode to file:
+		png.Encode(f, outImg)
+
+		log.Printf("output: %s\n", filePath)
 	}
-
-	anim, err := renderer.Compose(avatar)
-	if err != nil {
-		return fmt.Errorf("err composing avatar: %w", err)
-	}
-
-	// write image to buffer so we can do further processing (scaling/ cropping)
-	// sadly we are double encoding/ decoding to avoid messing with nx code
-	var imageBuffer bytes.Buffer
-
-	encoder := imager.NewEncoderPNG()
-	encoder.EncodeFrame(&imageBuffer, anim, 0, 0)
-
-	// figures should be 100x200 - scale x2 + canvas size change
-	// avatars should be 50x50 - canvas size change only
-
-	unprocessedImg, err := png.Decode(&imageBuffer)
-
-	if err != nil {
-		return fmt.Errorf("err decoding png: %w", err)
-	}
-
-	unprocessedImgRect := image.Rect(0, 0, playerImageType.UnscaledX, playerImageType.UnscaledY)
-	unscaledImg := image.NewRGBA(unprocessedImgRect)
-
-	fixedSizeImgStartPoint := image.Point{
-		X: (playerImageType.UnscaledX - unprocessedImg.Bounds().Max.X) / 2,
-		Y: (playerImageType.UnscaledY - unprocessedImg.Bounds().Max.Y) / 2,
-	}
-
-	r := image.Rectangle{fixedSizeImgStartPoint, fixedSizeImgStartPoint.Add(unprocessedImgRect.Size())}
-	draw.Draw(unscaledImg, r, unprocessedImg, unprocessedImgRect.Min, draw.Src)
-
-	var outImg *image.RGBA
-
-	if playerImageType == Figure {
-		// scale image too if figure
-		outImg = image.NewRGBA(image.Rect(0, 0, unscaledImg.Bounds().Max.X*2, unscaledImg.Bounds().Max.Y*2))
-		draw.NearestNeighbor.Scale(outImg, outImg.Rect, unscaledImg, unscaledImg.Bounds(), draw.Over, nil)
-	} else {
-		outImg = unscaledImg
-	}
-
-	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("err opening file: %w", err)
-	}
-	defer f.Close()
-
-	// Encode to file:
-	png.Encode(f, outImg)
-
-	log.Printf("output: %s\n", filePath)
 	return nil
+
 }

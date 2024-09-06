@@ -14,7 +14,11 @@
                 hx-target="#player-card"
                 hx-swap="outerHTML">
                 {{ if .AvatarExists }}
-                    <img src="/static/images/avatars/{{.Username}}.png">
+                    {{ if .FromMe }}
+                        <img src="/static/images/avatars/me/{{.Username}}.png">
+                    {{ else }}
+                        <img src="/static/images/avatars/{{.Username}}.png">
+                    {{end}}
                 {{ else }}
                     <img src="/static/images/baseavatar.png">
                 {{ end }}

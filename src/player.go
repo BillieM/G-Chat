@@ -82,8 +82,6 @@ func playerApiUpdate(player ClientPlayer) {
 		}
 	}
 
-	addToPlayerListChannel <- AddToPlayerList{dbPlayer}
-
 	var forceUpdate bool
 
 	if myPlayer != nil && player.Index == myPlayer.Index && !dbPlayer.IsMe {
@@ -128,14 +126,18 @@ func playerApiUpdate(player ClientPlayer) {
 
 		// generate player avatar
 		if avatarUpdateRequired {
-			go updatePlayerAvatar(&dbPlayer, figure)
+			updatePlayerAvatar(&dbPlayer, figure)
 		}
 
 		// get player figure
 		if figureUpdateRequired {
-			go updatePlayerFigure(&dbPlayer, figure)
+			updatePlayerFigure(&dbPlayer, figure)
 		}
 	}
+
+	log.Println(dbPlayer.Username, dbPlayer.AvatarExists)
+
+	addToPlayerListChannel <- AddToPlayerList{dbPlayer}
 }
 
 func playersAPIUpdater() {
