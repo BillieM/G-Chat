@@ -51,11 +51,11 @@ type PlayerEnterRoom struct {
 }
 
 var (
-	messageChannel         chan Message         = make(chan Message)
-	playerLeaveRoomChannel chan PlayerLeaveRoom = make(chan PlayerLeaveRoom) // leave room notifications
-	playerEnterRoomChannel chan PlayerEnterRoom = make(chan PlayerEnterRoom) // enter room notifications
-	addToPlayerListChannel chan AddToPlayerList = make(chan AddToPlayerList)
-	clearPlayerListChannel chan ClearPlayerList = make(chan ClearPlayerList)
+	messageChannel         chan Message         = make(chan Message)         // displays message
+	playerLeaveRoomChannel chan PlayerLeaveRoom = make(chan PlayerLeaveRoom) // displays leave room notification & removes player from player list
+	playerEnterRoomChannel chan PlayerEnterRoom = make(chan PlayerEnterRoom) // displays enter room notification
+	addToPlayerListChannel chan AddToPlayerList = make(chan AddToPlayerList) // adds player to player list
+	clearPlayerListChannel chan ClearPlayerList = make(chan ClearPlayerList) // clears player list
 )
 
 func socketEventSender() {
@@ -95,10 +95,3 @@ func sendEvent(template appTemplate, data any) {
 
 	log.Printf("event: %s successfully sent to browser\n", template.templateName)
 }
-
-/*
-theory
-
-hx-swap-oob="delete" -> LeaveRoom event
-
-*/
