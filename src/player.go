@@ -8,6 +8,7 @@ import (
 	"g-chat/src/data"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"go.uber.org/ratelimit"
@@ -124,15 +125,27 @@ func playerApiUpdate(player ClientPlayer) {
 			return
 		}
 
+		var wg sync.WaitGroup
+
 		// generate player avatar
 		if avatarUpdateRequired {
-			updatePlayerAvatar(&dbPlayer, figure)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				updatePlayerAvatar(&dbPlayer, figure)
+			}()
 		}
 
 		// get player figure
 		if figureUpdateRequired {
-			updatePlayerFigure(&dbPlayer, figure)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				updatePlayerFigure(&dbPlayer, figure)
+			}()
 		}
+
+		wg.Wait()
 	}
 
 	addToPlayerListChannel <- AddToPlayerList{dbPlayer}
