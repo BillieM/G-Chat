@@ -135,8 +135,6 @@ func playerApiUpdate(player ClientPlayer) {
 		}
 	}
 
-	log.Println(dbPlayer.Username, dbPlayer.AvatarExists)
-
 	addToPlayerListChannel <- AddToPlayerList{dbPlayer}
 }
 

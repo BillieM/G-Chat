@@ -52,8 +52,8 @@ type PlayerEnterRoom struct {
 
 var (
 	messageChannel         chan Message         = make(chan Message)
-	playerLeaveRoomChannel chan PlayerLeaveRoom = make(chan PlayerLeaveRoom)
-	playerEnterRoomChannel chan PlayerEnterRoom = make(chan PlayerEnterRoom)
+	playerLeaveRoomChannel chan PlayerLeaveRoom = make(chan PlayerLeaveRoom) // leave room notifications
+	playerEnterRoomChannel chan PlayerEnterRoom = make(chan PlayerEnterRoom) // enter room notifications
 	addToPlayerListChannel chan AddToPlayerList = make(chan AddToPlayerList)
 	clearPlayerListChannel chan ClearPlayerList = make(chan ClearPlayerList)
 )
