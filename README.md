@@ -1,4 +1,5 @@
 # G-Chat
+<img width="1043" alt="G-chat example image" src="https://github.com/user-attachments/assets/9f0e3aa4-e6ea-4a17-adce-2e3d8fcdd604">
 
 G-Chat is a web-based chat client for Habbo hotel origins.
 It is an extension for [G-Earth](https://github.com/sirjonasxx/G-Earth)
