@@ -3,7 +3,7 @@
 G-Chat is a web-based chat client for Habbo hotel origins.
 It is an extension for [G-Earth](https://github.com/sirjonasxx/G-Earth)
 
-Special thanks to [b7c]()/[xabbo]() for [goearth](https://xabbo.b7c.io/nx) and [nx](https://xabbo.b7c.io/nx), both of which are used heavily in this project.
+Special thanks to [b7c](https://github.com/b7c)/[xabbo]() for [goearth](https://xabbo.b7c.io/nx) and [nx](https://xabbo.b7c.io/nx), both of which are used heavily in this project.
 
 ## Running
 
