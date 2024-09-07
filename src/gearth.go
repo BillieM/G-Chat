@@ -63,9 +63,13 @@ func handleConnected(e g.ConnectArgs) {
 
 func handleDisconnected() {
 	log.Println("Game disconnected")
+	playersPacketCount = 0
+	clear(players)
+	clearPlayerListChannel <- ClearPlayerList{}
 }
 
 func handleHabboEnterRoom(e *g.Intercept) {
+	log.Println("Room entered")
 	playersPacketCount = 0
 	clear(players)
 	clearPlayerListChannel <- ClearPlayerList{}

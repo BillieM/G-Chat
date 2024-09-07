@@ -27,7 +27,15 @@
                 {{.Gender}} {{.Username}}
                 <time class="text-xs opacity-50">{{.Time}}</time>
             </div>
-            <div class="chat-bubble {{.ChatBackground}} {{.ChatText}}">
+            <div class='chat-bubble {{.ChatBackground}} {{.ChatText}}
+                        {{ if eq .MessageType "say" }}
+                            font-light
+                        {{ else if eq .MessageType "whisper" }}
+                            font-light italic
+                        {{ else }}
+
+                        {{ end }}
+                        '>
                 {{.Content}}
             </div>
         </div>

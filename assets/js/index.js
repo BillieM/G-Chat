@@ -17,6 +17,7 @@ document.addEventListener('htmx:wsAfterMessage', function(evt) {
     if (eventType == "message") {
         var encodedMessage = eventEl.getAttribute('data-encoded-message');
         var username = eventEl.getAttribute('data-username');
+        var messageType = eventEl.getAttribute('data-type');
         
         // Decode the message
         var decodedMessage = decodeMessage(encodedMessage);
@@ -25,8 +26,8 @@ document.addEventListener('htmx:wsAfterMessage', function(evt) {
         var previousActualChat = document.querySelector('.chat:nth-last-child(2)')
     
         if (previousActualChat && 
-            username == previousActualChat.getAttribute("data-username")
-            
+            username == previousActualChat.getAttribute("data-username") && 
+            messageType == previousActualChat.getAttribute("data-type")
         ) {
             // merge to above message
             actualChat.remove()
